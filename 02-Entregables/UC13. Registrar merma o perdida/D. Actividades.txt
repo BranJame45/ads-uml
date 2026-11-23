@@ -1,0 +1,90 @@
+@startuml
+scale 0.7
+skinparam ActivityBackgroundColor #FFFFE0
+skinparam ActivityBorderColor #8B0000
+skinparam ArrowColor #8B0000
+skinparam PartitionBorderColor #000000
+skinparam shadowing false
+skinparam DefaultFontName Arial
+
+title Diagrama de Actividades - UC13: Registrar Merma o Pérdida
+
+|Encargado de Almacén|
+start
+:Dar clic en el botón "Registrar Merma" del Panel Principal;
+
+|Sistema|
+:Validar btnRegistrarMerma;
+if (isset(btnRegistrarMerma)) then (False)
+  :Mostrar panel <Error> "Acceso no permitido";
+  stop
+else (TRUE)
+  :Mostrar ventana <Registro de Merma> con selector de tipo de ítem, buscador vacío y campos de cantidad y motivo deshabilitados;
+
+  switch (Clic en ....)
+  case (boton <Buscar Ítem>)
+    :Sanitizar texto de búsqueda;
+    :Verificar si se eligió el tipo de ítem y el buscador tiene contenido;
+    if (¿Tipo no seleccionado o búsqueda vacía?) then (SI)
+      :Mostrar panel <Error> "Debe seleccionar el tipo de ítem e ingresar un nombre o código";
+      stop
+    else (NO)
+      :Consultar en la BD el ítem activo según el tipo seleccionado por nombre o código;
+      note right: SELECT id_prod, nombre, codigo, stock_fisico, costo_unitario FROM Producto WHERE tipo = ? AND estado = 'Activo' AND (nombre LIKE '%?%' OR codigo = ?)
+      :Verificar si el ítem existe en BD;
+      if (¿Existe ítem?) then (SI)
+        :Cargar datos del ítem en variable temporal de sesión;
+        :Mostrar datos del ítem con su stock actual y habilitar los campos cantidad perdida y motivo;
+        stop
+      else (NO)
+        :Mostrar panel <Aviso> "Ítem no encontrado";
+        stop
+      endif
+    endif
+
+  case (boton <Confirmar Merma>)
+    :Validar btnConfirmarMerma;
+    if (isset(btnConfirmarMerma)) then (False)
+      :Mostrar panel <Error> "Acceso no permitido";
+      stop
+    else (TRUE)
+      :Verificar si hay un ítem seleccionado en sesión;
+      if (¿Hay ítem en sesión?) then (NO)
+        :Mostrar panel <Error> "Debe buscar y seleccionar un ítem antes de confirmar";
+        stop
+      else (SI)
+        :Sanitizar cantidad perdida y capturar el motivo;
+        :Verificar la cantidad ingresada y el motivo seleccionado;
+        if (¿Cantidad > 0 y motivo seleccionado?) then (NO)
+          :Mostrar panel <Error> "Debe ingresar una cantidad mayor a cero y seleccionar un motivo";
+          stop
+        else (SI)
+          :Consultar en la BD el stock físico actual y costo del ítem;
+          note right: SELECT stock_fisico, costo_unitario FROM Producto WHERE id_prod = ?
+          :Verificar si la cantidad de merma no supera el stock disponible;
+          if (¿Cantidad perdida > stock disponible?) then (SI)
+            :Mostrar panel <Error> "La cantidad de merma no puede superar el stock existente";
+            stop
+          else (NO)
+            :Calcular el costo estimado de la pérdida (cantidad perdida x costo unitario);
+            :Registrar en la BD el registro de merma;
+            note right: INSERT INTO Merma (id_prod, cantidad, motivo, costo_estimado, fecha, id_usuario) VALUES (?, ?, ?, ?, NOW(), ?)
+            :Descontar en la BD la cantidad perdida del stock físico del ítem;
+            note right: UPDATE Producto SET stock_fisico = stock_fisico - ? WHERE id_prod = ?
+            :Limpiar variables temporales de la sesión;
+            :Mostrar panel <Éxito> "Merma registrada y stock actualizado correctamente";
+            stop
+          endif
+        endif
+      endif
+    endif
+
+  case (boton <Cancelar>)
+    :Limpiar variables temporales de la sesión;
+    :Redireccionar al Panel Principal;
+    stop
+
+  endswitch
+endif
+
+@enduml

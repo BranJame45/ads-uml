@@ -1,0 +1,292 @@
+@startuml
+skinparam ClassBackgroundColor #FFFFE0
+skinparam ClassBorderColor #8B0000
+skinparam ArrowColor #8B0000
+skinparam ClassStereotypeFontColor #8B0000
+skinparam ClassHeaderBackgroundColor #F5E6E6
+skinparam shadowing false
+skinparam DefaultFontName Arial
+
+title Diagrama de Entidades Consolidado - CARTOLIMP (Sincronizado con Trabajo aplicativo.mdl)
+
+' ============================================================
+' MÓDULO SEGURIDAD (UC01 - UC04)
+' ============================================================
+package "Seguridad" {
+  class "CE_usuario" as e_usuario <<Entidad>> {
+    - id_usu : INT (PK)
+    - documento : VARCHAR(8)
+    - nombre_completo : VARCHAR(100)
+    - username : VARCHAR(50)
+    - password : VARCHAR(8)
+    - token_recuperacion : VARCHAR(100)
+    - token_expiracion : DATETIME
+    - estado : VARCHAR(10)
+    --
+    + obtenerUsuarios()
+    + obtenerUsuariosFiltrados()
+    + verificarDocumentoDuplicado()
+    + registrarUsuario()
+    + obtenerDatosUsuario()
+    + actualizarUsuario()
+    + actualizarPassword()
+    + cambiarEstadoUsuario()
+  }
+
+  class "CE_rol" as e_rol <<Entidad>> {
+    - id_rol : INT (PK)
+    - nombre_rol : VARCHAR(50)
+  }
+
+  class "CE_usuario_rol" as e_usuario_rol <<Entidad>> {
+    - id_usu : INT (PK, FK)
+    - id_rol : INT (PK, FK)
+    --
+    + registrarRolesUsuario()
+    + actualizarRolesUsuario()
+  }
+}
+
+' ============================================================
+' MÓDULO VENTAS (UC05 - UC07)
+' ============================================================
+package "Ventas" {
+  class "CE_cliente" as e_cliente <<Entidad>> {
+    - id_cliente : INT (PK)
+    - tipo_documento : VARCHAR(10)
+    - documento : VARCHAR(15)
+    - nombre : VARCHAR(100)
+    - telefono : VARCHAR(20)
+    - correo : VARCHAR(100)
+    - direccion : VARCHAR(150)
+    - estado : VARCHAR(10)
+    --
+    + buscarClientePorDocONombre()
+  }
+
+  class "CE_venta" as e_venta <<Entidad>> {
+    - id_venta : INT (PK)
+    - id_cliente : INT (FK)
+    - id_usuario : INT (FK)
+    - fecha : DATETIME
+    - num_comprobante : VARCHAR(20)
+    - tipo_comprobante : VARCHAR(20)
+    - total : DECIMAL(10,2)
+    - adelanto : DECIMAL(10,2)
+    - saldo : DECIMAL(10,2)
+    - metodo_pago : VARCHAR(30)
+    - estado : VARCHAR(15)
+    --
+    + obtenerReservasPendientes()
+    + registrarPago()
+    + actualizarVentaCompletada()
+    + obtenerCorrelativoComprobante()
+    + registrarVenta()
+  }
+
+  class "CE_detalle_venta" as e_detalle_venta <<Entidad>> {
+    - id_detalle_venta : INT (PK)
+    - id_venta : INT (FK)
+    - id_prod : INT (FK)
+    - cantidad : INT
+    - precio_unitario : DECIMAL(10,2)
+    - subtotal : DECIMAL(10,2)
+    --
+    + obtenerDetalleReserva()
+    + registrarDetalleVenta()
+  }
+
+  class "CE_reclamo" as e_reclamo <<Entidad>> {
+    - id_reclamo : INT (PK)
+    - id_venta : INT (FK)
+    - id_prod : INT (FK)
+    - id_usuario : INT (FK)
+    - motivo : TEXT
+    - cantidad : INT
+    - fecha : DATETIME
+    - tipo_resolucion : VARCHAR(30)
+    - monto_devuelto : DECIMAL(10,2)
+    - estado : VARCHAR(15)
+  }
+}
+
+' ============================================================
+' MÓDULO INVENTARIO Y PRODUCCIÓN (UC08 - UC14)
+' ============================================================
+package "Inventario y Producción" {
+  class "CE_proveedor" as e_proveedor <<Entidad>> {
+    - id_prov : INT (PK)
+    - razon_social : VARCHAR(100)
+    - ruc : VARCHAR(11)
+    - telefono : VARCHAR(20)
+    - correo : VARCHAR(100)
+    - direccion : VARCHAR(150)
+    - estado : VARCHAR(10)
+    --
+    + obtenerProveedoresActivos()
+    + obtenerProveedoresFiltrados()
+    + verificarRucDuplicado()
+    + registrarProveedor()
+    + obtenerDatosProveedor()
+    + actualizarProveedor()
+    + desactivarProveedor()
+  }
+
+  class "CE_ingreso_mercancia" as e_ingreso <<Entidad>> {
+    - id_ingreso : INT (PK)
+    - id_prov : INT (FK)
+    - id_usuario : INT (FK)
+    - fecha : DATETIME
+    - num_ingreso : VARCHAR(20)
+    - num_comprobante_prov : VARCHAR(30)
+    - costo_total : DECIMAL(10,2)
+    - estado : VARCHAR(15)
+  }
+
+  class "CE_detalle_ingreso" as e_detalle_ingreso <<Entidad>> {
+    - id_detalle_ingreso : INT (PK)
+    - id_ingreso : INT (FK)
+    - id_prod : INT (FK)
+    - cantidad : DECIMAL(10,2)
+    - costo_unitario : DECIMAL(10,2)
+    - subtotal : DECIMAL(10,2)
+  }
+
+  class "CE_categoria" as e_categoria <<Entidad>> {
+    - id_categoria : INT (PK)
+    - nombre : VARCHAR(50)
+    - estado : VARCHAR(10)
+    --
+    + obtenerCategoriasActivas()
+  }
+
+  class "CE_unidad_medida" as e_unidad <<Entidad>> {
+    - id_unidad : INT (PK)
+    - nombre : VARCHAR(30)
+    - abreviatura : VARCHAR(10)
+    - estado : VARCHAR(10)
+    --
+    + obtenerUnidadesActivas()
+  }
+
+  class "CE_producto" as e_producto <<Entidad>> {
+    - id_prod : INT (PK)
+    - codigo : VARCHAR(20)
+    - nombre : VARCHAR(100)
+    - descripcion : TEXT
+    - id_categoria : INT (FK)
+    - id_unidad : INT (FK)
+    - precio_venta : DECIMAL(10,2)
+    - costo_unitario : DECIMAL(10,2)
+    - stock_minimo : INT
+    - stock_fisico : INT
+    - stock_separado : INT
+    - tipo : VARCHAR(20)
+    - estado : VARCHAR(10)
+    --
+    + obtenerProductosActivos()
+    + obtenerProductosDisponibles()
+    + obtenerProductosFiltrados()
+    + verificarNombreDuplicado()
+    + registrarProducto()
+    + obtenerDatosProducto()
+    + verificarNombreEnOtroProducto()
+    + actualizarProducto()
+    + verificarExistenciaActiva()
+    + desactivarProducto()
+    + verificarStockProducto()
+    + liberarYDescontarStock()
+    + separarStockProducto()
+    + descontarStockFisico()
+    + sumarStockFisico()
+  }
+
+  class "CE_receta" as e_receta <<Entidad>> {
+    - id_receta : INT (PK)
+    - id_producto_terminado : INT (FK)
+    - id_insumo : INT (FK)
+    - cantidad_unitaria : DECIMAL(10,4)
+    --
+    + obtenerRecetaProducto()
+  }
+
+  class "CE_produccion" as e_produccion <<Entidad>> {
+    - id_produccion : INT (PK)
+    - id_producto : INT (FK)
+    - id_usuario : INT (FK)
+    - cantidad_producida : INT
+    - fecha : DATETIME
+    --
+    + registrarProduccion()
+  }
+
+  class "CE_produccion_detalle" as e_prod_detalle <<Entidad>> {
+    - id_produccion_detalle : INT (PK)
+    - id_produccion : INT (FK)
+    - id_insumo : INT (FK)
+    - cantidad_consumida : DECIMAL(10,4)
+    --
+    + registrarProduccionDetalle()
+  }
+
+  class "CE_merma" as e_merma <<Entidad>> {
+    - id_merma : INT (PK)
+    - id_prod : INT (FK)
+    - id_usuario : INT (FK)
+    - fecha : DATETIME
+    - cantidad : DECIMAL(10,2)
+    - motivo : VARCHAR(50)
+    - costo_estimado : DECIMAL(10,2)
+    --
+    + registrarMerma()
+  }
+
+  class "CE_movimiento_inventario" as e_movimiento <<Entidad>> {
+    - id_movimiento : INT (PK)
+    - id_prod : INT (FK)
+    - id_usuario : INT (FK)
+    - fecha : DATETIME
+    - tipo_movimiento : VARCHAR(30)
+    - referencia_origen : VARCHAR(50)
+    - cantidad : DECIMAL(10,2)
+    - stock_resultante : DECIMAL(10,2)
+    - motivo_anulacion : TEXT
+    - estado : VARCHAR(10)
+  }
+}
+
+' ============================================================
+' RELACIONES ENTRE ENTIDADES (FK)
+' ============================================================
+e_usuario "1" -- "0..*" e_usuario_rol
+e_rol "1" -- "0..*" e_usuario_rol
+
+e_cliente "1" -- "0..*" e_venta
+e_usuario "1" -- "0..*" e_venta
+e_venta "1" *-- "1..*" e_detalle_venta
+e_producto "1" -- "0..*" e_detalle_venta
+e_venta "1" -- "0..*" e_reclamo
+e_producto "1" -- "0..*" e_reclamo
+e_usuario "1" -- "0..*" e_reclamo
+
+e_proveedor "1" -- "0..*" e_ingreso
+e_usuario "1" -- "0..*" e_ingreso
+e_ingreso "1" *-- "1..*" e_detalle_ingreso
+e_producto "1" -- "0..*" e_detalle_ingreso
+
+e_categoria "1" -- "0..*" e_producto
+e_unidad "1" -- "0..*" e_producto
+
+e_producto "1" -- "0..*" e_receta : producto_terminado / insumo
+e_producto "1" -- "0..*" e_produccion
+e_usuario "1" -- "0..*" e_produccion
+e_produccion "1" *-- "1..*" e_prod_detalle
+e_producto "1" -- "0..*" e_prod_detalle : insumo
+
+e_producto "1" -- "0..*" e_merma
+e_usuario "1" -- "0..*" e_merma
+
+e_producto "1" -- "0..*" e_movimiento
+e_usuario "1" -- "0..*" e_movimiento
+
+@enduml

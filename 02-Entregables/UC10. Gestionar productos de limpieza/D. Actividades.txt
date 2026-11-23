@@ -1,0 +1,168 @@
+@startuml
+scale 0.7
+skinparam ActivityBackgroundColor #FFFFE0
+skinparam ActivityBorderColor #8B0000
+skinparam ArrowColor #8B0000
+skinparam PartitionBorderColor #000000
+skinparam shadowing false
+skinparam DefaultFontName Arial
+
+title Diagrama de Actividades - UC10: Gestionar Productos de Limpieza
+
+|Encargado de Almacén|
+start
+:Dar clic en el botón "Gestionar Productos" del Panel Principal;
+
+|Sistema|
+:Validar btnGestionarProductos;
+if (isset(btnGestionarProductos)) then (False)
+  :Mostrar panel <Error> "Acceso no permitido";
+  stop
+else (TRUE)
+  :Consultar en la BD la lista de productos de limpieza activos con su categoría y estado de stock;
+  note right: SELECT p.id_prod, p.nombre, c.nombre AS categoria, u.nombre AS unidad, p.precio_venta, p.stock_fisico, p.stock_minimo, CASE WHEN p.stock_fisico <= p.stock_minimo THEN 'Crítico' ELSE 'Normal' END AS estado_stock FROM Producto p INNER JOIN Categoria c ON p.id_categoria = c.id_categoria INNER JOIN Unidad_Medida u ON p.id_unidad = u.id_unidad WHERE p.tipo = 'Terminado' AND p.estado = 'Activo' ORDER BY p.nombre
+  :Mostrar ventana <Gestión de Productos> con grilla (resalta en alerta los productos con stock Crítico), buscador y botón [Nuevo Producto];
+
+  switch (Clic en ....)
+  case (boton <Buscar>)
+    :Sanitizar texto de búsqueda;
+    :Verificar si el campo tiene contenido;
+    if (¿Campo vacío?) then (SI)
+      :Mostrar panel <Error> "Debe ingresar un nombre o categoría para buscar";
+      stop
+    else (NO)
+      :Consultar en la BD productos activos filtrados por nombre o categoría;
+      note right: SELECT p.id_prod, p.nombre, c.nombre AS categoria, u.nombre AS unidad, p.precio_venta, p.stock_fisico, p.stock_minimo, CASE WHEN p.stock_fisico <= p.stock_minimo THEN 'Crítico' ELSE 'Normal' END AS estado_stock FROM Producto p INNER JOIN Categoria c ON p.id_categoria = c.id_categoria INNER JOIN Unidad_Medida u ON p.id_unidad = u.id_unidad WHERE p.tipo = 'Terminado' AND p.estado = 'Activo' AND (p.nombre LIKE '%?%' OR c.nombre LIKE '%?%')
+      :Actualizar grilla con los resultados de la búsqueda;
+      stop
+    endif
+
+  case (boton <Nuevo Producto>)
+    :Validar btnNuevoProducto;
+    if (isset(btnNuevoProducto)) then (False)
+      :Mostrar panel <Error> "Acceso no permitido";
+      stop
+    else (TRUE)
+      :Consultar en la BD la lista de categorías activas;
+      note right: SELECT id_categoria, nombre FROM Categoria WHERE estado = 'Activo' ORDER BY nombre
+      :Consultar en la BD la lista de unidades de medida activas;
+      note right: SELECT id_unidad, nombre, abreviatura FROM Unidad_Medida WHERE estado = 'Activo' ORDER BY nombre
+      :Mostrar modal <Formulario de Producto> vacío con combos de categoría y unidad precargados y campos nombre, descripción, precio de venta y stock mínimo;
+      if (Clic en ...) then (boton <Cancelar>)
+        :Cerrar modal y mantener vista actual;
+        stop
+      else (boton <Guardar Nuevo>)
+        :Validar btnGuardarNuevo;
+        if (isset(btnGuardarNuevo)) then (False)
+          :Mostrar panel <Error> "Acceso no permitido";
+          stop
+        else (TRUE)
+          :Sanitizar datos del formulario;
+          :Validar que los campos obligatorios no estén vacíos;
+          if (¿Campos incompletos?) then (SI)
+            :Mostrar panel <Error> "El nombre, categoría, unidad, precio de venta y stock mínimo son obligatorios";
+            stop
+          else (NO)
+            :Consultar en la BD si ya existe un producto con ese nombre;
+            note right: SELECT id_prod FROM Producto WHERE nombre = ? AND tipo = 'Terminado'
+            if (¿Nombre ya registrado?) then (SI)
+              :Mostrar panel <Error> "Ya existe un producto registrado con ese nombre";
+              stop
+            else (NO)
+              :Registrar en la BD el nuevo producto con stock inicial en cero y estado Activo;
+              note right: INSERT INTO Producto (nombre, descripcion, id_categoria, id_unidad, precio_venta, stock_minimo, stock_fisico, tipo, estado) VALUES (?, ?, ?, ?, ?, ?, 0, 'Terminado', 'Activo')
+              :Mostrar panel <Éxito> "Producto registrado correctamente";
+              stop
+            endif
+          endif
+        endif
+      endif
+    endif
+
+  case (boton <Editar Producto>)
+    :Validar btnEditarProducto;
+    if (isset(btnEditarProducto)) then (False)
+      :Mostrar panel <Error> "Acceso no permitido";
+      stop
+    else (TRUE)
+      :Sanitizar ID del producto recibido;
+      :Consultar en la BD el producto y sus datos;
+      note right: SELECT id_prod, nombre, descripcion, id_categoria, id_unidad, precio_venta, stock_minimo, stock_fisico FROM Producto WHERE id_prod = ? AND tipo = 'Terminado'
+      if (¿Existe producto?) then (NO)
+        :Mostrar panel <Error> "El producto solicitado no existe";
+        stop
+      else (SI)
+        :Cargar en variables los datos obtenidos del producto;
+        :Consultar en la BD la lista de categorías activas;
+        note right: SELECT id_categoria, nombre FROM Categoria WHERE estado = 'Activo' ORDER BY nombre
+        :Consultar en la BD la lista de unidades de medida activas;
+        note right: SELECT id_unidad, nombre, abreviatura FROM Unidad_Medida WHERE estado = 'Activo' ORDER BY nombre
+        :Mostrar modal <Formulario de Producto> con datos precargados (combos categoría y unidad con la selección actual) y stock actual en sólo lectura;
+        if (Clic en ...) then (boton <Cancelar>)
+          :Cerrar modal y mantener vista actual;
+          stop
+        else (boton <Guardar Cambios>)
+          :Validar btnGuardarCambios;
+          if (isset(btnGuardarCambios)) then (False)
+            :Mostrar panel <Error> "Acceso no permitido";
+            stop
+          else (TRUE)
+            :Sanitizar datos del formulario;
+            :Validar que los campos obligatorios no estén vacíos;
+            if (¿Campos obligatorios incompletos?) then (SI)
+              :Mostrar panel <Error> "El nombre, categoría, unidad, precio de venta y stock mínimo son obligatorios";
+              stop
+            else (NO)
+              :Consultar en la BD si el nombre ya pertenece a OTRO producto;
+              note right: SELECT id_prod FROM Producto WHERE nombre = ? AND tipo = 'Terminado' AND id_prod != ?
+              if (¿Nombre duplicado?) then (SI)
+                :Mostrar panel <Error> "El nombre ya está siendo usado por otro producto";
+                stop
+              else (NO)
+                :Actualizar datos del producto en la BD (el stock físico no se modifica aquí);
+                note right: UPDATE Producto SET nombre = ?, id_categoria = ?, id_unidad = ?, precio_venta = ?, stock_minimo = ? WHERE id_prod = ?
+                :Mostrar panel <Éxito> "Datos del producto actualizados correctamente";
+                stop
+              endif
+            endif
+          endif
+        endif
+      endif
+    endif
+
+  case (boton <Dar de Baja Producto>)
+    :Validar btnDarBajaProducto;
+    if (isset(btnDarBajaProducto)) then (False)
+      :Mostrar panel <Error> "Acceso no permitido";
+      stop
+    else (TRUE)
+      :Sanitizar ID del producto recibido;
+      :Mostrar panel <Confirmación> "¿Está seguro de dar de baja este producto?";
+      if (Clic en ..) then (boton <Cancelar>)
+        :Cerrar confirmación y mantener vista actual;
+        stop
+      else (boton <Aceptar>)
+        :Validar btnAceptar;
+        if (isset(btnAceptar)) then (False)
+          :Mostrar panel <Error> "Acceso no permitido";
+          stop
+        else (TRUE)
+          :Verificar en BD si el producto existe y está activo;
+          note right: SELECT id_prod FROM Producto WHERE id_prod = ? AND tipo = 'Terminado' AND estado = 'Activo'
+          if (¿Existe producto?) then (NO)
+            :Mostrar panel <Error> "El producto solicitado no existe";
+            stop
+          else (SI)
+            :Actualizar en la BD el estado del producto a 'Inactivo';
+            note right: UPDATE Producto SET estado = 'Inactivo' WHERE id_prod = ?
+            :Mostrar panel <Éxito> "Producto dado de baja correctamente";
+            stop
+          endif
+        endif
+      endif
+    endif
+
+  endswitch
+endif
+
+@enduml

@@ -1,0 +1,173 @@
+@startuml
+scale 0.7
+skinparam ActivityBackgroundColor #FFFFE0
+skinparam ActivityBorderColor #8B0000
+skinparam ArrowColor #8B0000
+skinparam PartitionBorderColor #000000
+skinparam shadowing false
+skinparam DefaultFontName Arial
+
+title Diagrama de Actividades - UC04: Gestionar Usuarios (CRUD Base)
+
+|Administrador|
+start
+:Dar clic en el botón "Gestionar Usuarios" del Panel Principal;
+
+|Sistema|
+:Validar btnGestionarUsuarios;
+if (isset(btnGestionarUsuarios)) then (False)
+  :Mostrar panel <Error> "Acceso no permitido";
+  stop
+else (TRUE)
+  :Consultar en la BD la lista completa de usuarios (activos e inactivos);
+  note right: SELECT u.id_usu, u.documento, u.nombre_completo, u.username, u.estado, GROUP_CONCAT(r.nombre_rol) FROM Usuario u LEFT JOIN Usuario_Rol ur ON u.id_usu = ur.id_usu LEFT JOIN Rol r ON ur.id_rol = r.id_rol GROUP BY u.id_usu
+  :Mostrar ventana <Gestión de Usuarios> con grilla (incluye columna Estado), buscador y botón [Nuevo Usuario];
+
+  switch (Clic en ....)
+  case (boton <Buscar>)
+    :Sanitizar texto de búsqueda;
+    :Verificar si el campo tiene contenido;
+    if (¿Campo vacío?) then (SI)
+      :Mostrar panel <Error> "Debe ingresar un DNI, nombre o rol para buscar";
+      stop
+    else (NO)
+      :Consultar en la BD usuarios (activos e inactivos) filtrados por DNI, nombre o rol;
+      note right: SELECT u.id_usu, u.documento, u.nombre_completo, u.username, u.estado, GROUP_CONCAT(r.nombre_rol) FROM Usuario u LEFT JOIN Usuario_Rol ur ON u.id_usu = ur.id_usu LEFT JOIN Rol r ON ur.id_rol = r.id_rol WHERE (u.documento = ? OR u.nombre_completo LIKE '%?%' OR r.nombre_rol LIKE '%?%') GROUP BY u.id_usu
+      :Actualizar grilla con los resultados de la búsqueda;
+      stop
+    endif
+
+  case (boton <Nuevo Usuario>)
+    :Validar btnNuevoUsuario;
+    if (isset(btnNuevoUsuario)) then (False)
+      :Mostrar panel <Error> "Acceso no permitido";
+      stop
+    else (TRUE)
+      :Mostrar modal <Formulario de Usuario> vacío con checkboxes de roles;
+      if (Clic en ...) then (boton <Cancelar>)
+        :Cerrar modal y mantener vista actual;
+        stop
+      else (boton <Guardar Nuevo>)
+        :Validar btnGuardarNuevo;
+        if (isset(btnGuardarNuevo)) then (False)
+          :Mostrar panel <Error> "Acceso no permitido";
+          stop
+        else (TRUE)
+          :Validar que los campos obligatorios no estén vacíos;
+          if (¿Campos incompletos?) then (SI)
+            :Mostrar panel <Error> "El DNI, nombre, usuario y contraseña son obligatorios";
+            stop
+          else (NO)
+            :Verificar que al menos un rol (checkbox) esté seleccionado;
+            if (¿Tiene roles seleccionados?) then (NO)
+              :Mostrar panel <Error> "Debe asignar al menos un rol al usuario";
+              stop
+            else (SI)
+              :Consultar en la BD si ya existe un usuario con ese DNI;
+              note right: SELECT id_usu FROM Usuario WHERE documento = ?
+              if (¿DNI ya registrado?) then (SI)
+                :Mostrar panel <Error> "Ya existe un usuario registrado con ese DNI";
+                stop
+              else (NO)
+                :Encriptar contraseña (Hash);
+                :Registrar en la BD el nuevo usuario con estado 'Activo';
+                note right: INSERT INTO Usuario (documento, nombre_completo, username, password, estado) VALUES (?, ?, ?, ?, 'Activo')
+                :Recuperar el ID del usuario recién insertado (LAST_INSERT_ID);
+                :Insertar en la BD cada rol seleccionado para este usuario;
+                note right: INSERT INTO Usuario_Rol (id_usu, id_rol) VALUES (?, ?)
+                :Mostrar panel <Éxito> "Usuario registrado correctamente";
+                stop
+              endif
+            endif
+          endif
+        endif
+      endif
+    endif
+
+  case (boton <Editar Usuario>)
+    :Validar btnEditarUsuario;
+    if (isset(btnEditarUsuario)) then (False)
+      :Mostrar panel <Error> "Acceso no permitido";
+      stop
+    else (TRUE)
+      :Sanitizar ID del usuario recibido;
+      :Consultar en la BD el usuario y sus roles asignados;
+      note right: SELECT u.id_usu, u.documento, u.nombre_completo, u.username, GROUP_CONCAT(ur.id_rol) FROM Usuario u LEFT JOIN Usuario_Rol ur ON u.id_usu = ur.id_usu WHERE u.id_usu = ? GROUP BY u.id_usu
+      if (¿Existe usuario?) then (NO)
+        :Mostrar panel <Error> "El usuario solicitado no existe";
+        stop
+      else (SI)
+        :Cargar en variables los datos y roles obtenidos del usuario;
+        :Mostrar modal <Formulario de Usuario> con datos precargados y roles marcados;
+        if (Clic en ...) then (boton <Cancelar>)
+          :Cerrar modal y mantener vista actual;
+          stop
+        else (boton <Guardar Cambios>)
+          :Validar btnGuardarCambios;
+          if (isset(btnGuardarCambios)) then (False)
+            :Mostrar panel <Error> "Acceso no permitido";
+            stop
+          else (TRUE)
+            :Validar que nombre y usuario no estén vacíos;
+            if (¿Campos obligatorios incompletos?) then (SI)
+              :Mostrar panel <Error> "El nombre y el usuario son obligatorios";
+              stop
+            else (NO)
+              :Verificar que al menos un rol esté seleccionado;
+              if (¿Tiene roles seleccionados?) then (NO)
+                :Mostrar panel <Error> "Debe asignar al menos un rol al usuario";
+                stop
+              else (SI)
+                :Actualizar datos básicos en la BD (el DNI no se modifica, es el identificador);
+                note right: UPDATE Usuario SET nombre_completo = ?, username = ? WHERE id_usu = ?
+                if (¿Escribió nueva contraseña?) then (SI)
+                  :Encriptar nueva contraseña y actualizarla en BD;
+                  note right: UPDATE Usuario SET password = ? WHERE id_usu = ?
+                else (NO)
+                  :Mantener la contraseña actual;
+                endif
+                :Eliminar en la BD los roles actuales del usuario;
+                note right: DELETE FROM Usuario_Rol WHERE id_usu = ?
+                :Insertar en la BD los nuevos roles seleccionados;
+                note right: INSERT INTO Usuario_Rol (id_usu, id_rol) VALUES (?, ?)
+                :Mostrar panel <Éxito> "Datos del usuario actualizados correctamente";
+                stop
+              endif
+            endif
+          endif
+        endif
+      endif
+    endif
+
+  case (boton <Cambiar Estado>)
+    :Validar btnCambiarEstado;
+    if (isset(btnCambiarEstado)) then (False)
+      :Mostrar panel <Error> "Acceso no permitido";
+      stop
+    else (TRUE)
+      :Sanitizar ID del usuario recibido;
+      :Consultar en la BD el usuario y su estado actual;
+      note right: SELECT id_usu, estado FROM Usuario WHERE id_usu = ?
+      if (¿Existe usuario?) then (NO)
+        :Mostrar panel <Error> "El usuario solicitado no existe";
+        stop
+      else (SI)
+        :Verificar el estado actual del usuario;
+        if (¿Estado actual = 'Activo'?) then (SI)
+          :Actualizar en la BD el estado del usuario a 'Inactivo';
+          note right: UPDATE Usuario SET estado = 'Inactivo' WHERE id_usu = ?
+          :Mostrar panel <Éxito> "Usuario deshabilitado correctamente";
+          stop
+        else (NO)
+          :Actualizar en la BD el estado del usuario a 'Activo';
+          note right: UPDATE Usuario SET estado = 'Activo' WHERE id_usu = ?
+          :Mostrar panel <Éxito> "Usuario habilitado correctamente";
+          stop
+        endif
+      endif
+    endif
+
+  endswitch
+endif
+
+@enduml

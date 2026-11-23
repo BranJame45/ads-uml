@@ -1,0 +1,66 @@
+Business Use Case (BUC),Business Actor,Functional Requirements (RF),System Use Case (CUS),System Actor,Priority
+BUC-01: Realizar venta en mostrador,BA_cliente,"RF001: El sistema deberá permitir buscar productos de limpieza e insumos químicos por nombre, categoría, presentación o código SKU.",CUS-01: Gestionar cotización y preparación de pedido,Vendedor,1
+,,RF002: El sistema deberá consultar y mostrar el stock disponible en tiempo real del producto seleccionado.,,,
+,,RF003: El sistema deberá mostrar productos alternativos o de presentación similar en caso de desabastecimiento o stock insuficiente.,CUS-02: Sugerir productos alternativos,Vendedor,1
+,,"RF004: El sistema deberá permitir registrar y listar los productos solicitados en el detalle de la venta (producto, cantidad, precio unitario e importe).",CUS-03: Procesar cobro y emisión de comprobante de pago,Cajero,1
+,,RF005: El sistema deberá calcular automáticamente el importe total a pagar de la venta.,,,
+,,"RF006: El sistema deberá permitir registrar y validar los datos del cliente para el comprobante de pago (DNI/RUC, razón social, dirección, etc.).",,,
+,,RF007: El sistema deberá permitir seleccionar el tipo de comprobante de pago a emitir (Boleta de venta o Factura).,,,
+,,"RF008: El sistema deberá permitir registrar el medio de pago (efectivo, tarjeta de crédito/débito o pago digital/transferencia).",,,
+,,RF009: El sistema deberá calcular automáticamente el vuelto a entregar en pagos con efectivo.,,,
+,,RF010: El sistema deberá registrar el cobro procesado de la venta.,,,
+,,RF011: El sistema deberá permitir emitir (generar e imprimir/enviar) el comprobante de pago seleccionado (boleta/factura).,,,
+,,RF012: El sistema actualizará automáticamente el stock disponible de los productos de limpieza e insumos químicos tras la emisión del comprobante.,,,
+,,RF013: El sistema deberá permitir verificar el detalle del pedido contra los productos físicos preparados antes del despacho.,CUS-04: Registrar despacho y conformidad de productos,Vendedor,2
+,,RF014: El sistema deberá permitir registrar observaciones o correcciones en el comprobante/pedido ante rectificaciones solicitadas por el cliente antes del retiro.,,,
+BUC-02: Registrar cliente nuevo,BA_cliente,"RF024: El sistema deberá validar de forma obligatoria el documento de identidad (DNI, CE o RUC) ingresado para evitar duplicidad en la base de datos.",CUS-05: Registrar perfil de cliente nuevo,Vendedor / API Externa,1
+,,"RF025: El sistema deberá permitir registrar los datos de un cliente nuevo (Nombres o Razón Social, Teléfono, Correo y Dirección fiscal/domicilio).",,,
+,,RF026: El sistema deberá emitir una alerta visual si el número de documento ingresado ya se encuentra registrado.,,,
+,,"RF028: El sistema deberá permitir registrar la atención bajo la categoría predeterminada de ""Público en General"" si el cliente se niega a brindar sus datos (aplicable solo para Boletas).",,,
+,,"RF029: El sistema deberá validar que la longitud del documento ingresado sea estrictamente de 8 dígitos para DNI y 11 dígitos para RUC, bloqueando formatos incorrectos.",,,
+,,RF030: El sistema deberá tener la capacidad de autocompletar los Nombres o Razón Social del cliente consultando a servicios externos (RENIEC/SUNAT) tras ingresar el documento.,,,
+,,RF031: El sistema deberá permitir marcar una casilla de verificación con el consentimiento expreso del cliente para el uso de sus datos en campañas de fidelización.,,,
+,,"RF032: El sistema deberá guardar de forma automática (auditoría) la fecha, la hora y el ID del vendedor que realizó el registro del nuevo perfil.",,,
+,,RF027: El sistema deberá habilitar la edición de los datos de contacto en caso el documento validado pertenezca a un cliente ya existente que requiere actualización.,CUS-06: Actualizar datos de contacto de cliente,Vendedor,2
+BUC-03: Consultar disponibilidad de stock en tienda,Vendedor / Jefe Almacén,"RF001_B3: El sistema deberá permitir buscar productos por nombre, categoría o código SKU.",CUS-07: Consultar stock y gestionar alertas de inventario,Vendedor / Jefe de Almacén,1
+,,RF002_B3: El sistema deberá mostrar el stock disponible en tiempo real del producto seleccionado.,,,
+,,RF003_B3: El sistema deberá mostrar alertas visuales cuando el stock registrado sea mínimo o crítico.,,,
+,,RF004_B3: El sistema deberá permitir enviar una solicitud digital de verificación física al área de almacén.,CUS-08: Gestionar verificación y quiebre de stock físico,Vendedor / Jefe de Almacén,1
+,,RF005_B3: El sistema deberá permitir registrar y confirmar la existencia física del producto encontrado en las cajas de reserva.,,,
+,,"RF006_B3: El sistema deberá permitir registrar un 'Quiebre de Stock Real' cuando el producto no sea encontrado, actualizando el inventario a cero (0).",,,
+,,RF007_B3: El sistema deberá mostrar la notificación con el resultado enviado desde el almacén (Disponible / Agotado).,,,
+,,RF008_B3: El sistema deberá permitir cambiar el estado del producto verificado a 'Separado' para asegurar la transacción.,,,
+BUC-04: Gestionar reserva de producto,BA_cliente,RF015: El sistema deberá permitir registrar una solicitud de reserva de productos de limpieza o insumos químicos.,CUS-09: Registrar y confirmar reserva de producto,Vendedor / Jefe de Almacén,1
+,,RF016: El sistema deberá registrar y validar los datos de contacto del cliente para la reserva.,,,
+,,RF017: El sistema deberá verificar la disponibilidad y ubicación del stock en almacén para reserva.,,,
+,,"RF018: El sistema deberá permitir establecer las condiciones de reserva (fecha/plazo máximo de recojo, condiciones de pago y vigencia).",,,
+,,RF019: El sistema deberá permitir emitir una orden de ubicación y separación física de productos dirigida al almacén.,,,
+,,RF020: El sistema deberá permitir al Jefe de Almacén confirmar la localización física y el apartado del producto en la zona de reservas.,,,
+,,RF021: El sistema congelará/bloqueará el stock del producto reservado para evitar su venta directa en mostrador.,,,
+,,RF022: El sistema deberá emitir y enviar una constancia/código de reserva registrada para entrega al cliente.,,,
+,,"RF023: El sistema deberá permitir anular o cancelar una reserva por vencimiento de plazo o rechazo del cliente, liberando automáticamente el stock congelado.",CUS-10: Anular o cancelar reserva de producto,Jefe de Almacén,3
+BUC-05: Atender reclamo postventa,BA_cliente,RF001_B5: El sistema deberá permitir registrar el motivo de la visita del cliente (consulta o reclamo).,CUS-11: Registrar y clasificar reclamo postventa,Vendedor / Cajero,1
+,,RF002_B5: El sistema deberá registrar automáticamente la fecha y hora de la atención.,,,
+,,RF003_B5: El sistema deberá permitir buscar el historial de compras del cliente por número de documento o comprobante.,,,
+,,RF004_B5: El sistema deberá permitir validar la vigencia del comprobante de pago (boleta o factura) ingresado.,,,
+,,RF005_B5: El sistema deberá permitir clasificar el caso como consulta o como reclamo.,,,
+,,RF006_B5: El sistema deberá permitir verificar si la fecha de compra está dentro del plazo permitido para reclamos.,,,
+,,RF008_B5: El sistema deberá permitir registrar el resultado de la inspección física del producto devuelto.,,,
+,,RF017_B5: El sistema deberá permitir generar una constancia de atención imprimible.,,,
+,,"RF018_B5: El sistema deberá permitir escalar un caso no resuelto a otro trabajador, con fecha límite de respuesta.",,,
+,,RF013_B5: El sistema deberá permitir generar una nota de crédito por el monto del producto devuelto.,CUS-12: Emitir Nota de Crédito y actualización de caja,Cajero,1
+,,RF014_B5: El sistema deberá actualizar automáticamente el stock al procesar un cambio de producto.,,,
+,,RF015_B5: El sistema deberá permitir registrar el movimiento de caja asociado a la devolución o cambio.,,,
+BUC-06: Abastecer inventario con proveedores,Proveedor,RF033: El sistema deberá permitir buscar y seleccionar proveedores registrados en la base de datos por RUC o Razón Social.,CUS-13: Generar y emitir orden de compra al proveedor,Administrador,2
+,,RF034: El sistema deberá permitir listar los productos químicos o herramientas asociados al proveedor seleccionado con sus respectivos costos de adquisición de fábrica.,,,
+,,"RF035: El sistema deberá permitir registrar el detalle de la orden de compra (producto, presentación/volumen, cantidad solicitada y costo unitario pactado).",,,
+,,RF036: El sistema deberá calcular de forma automática el costo total estimado de la orden de compra.,,,
+,,"RF037: El sistema deberá permitir emitir (generar en PDF y registrar en estado ""Pendiente"") la orden de compra para su envío formal al proveedor.",,,
+,,RF038: El sistema deberá permitir buscar y cargar una orden de compra pendiente utilizando su código identificador o filtrando por proveedor.,CUS-14: Registrar ingreso de mercancía y costo promedio,Jefe de Almacén,1
+,,RF039: El sistema deberá permitir verificar y registrar las cantidades físicas de insumos químicos o herramientas que realmente ingresan al almacén frente a lo solicitado originalmente.,,,
+,,RF040: El sistema deberá registrar el número de guía de remisión o comprobante del proveedor (Factura de compra) para el sustento contable del ingreso.,,,
+,,RF041: El sistema deberá actualizar automáticamente el costo promedio ponderado de los productos y sumar el stock físico al inventario disponible tras confirmar la recepción.,,,
+,,"RF042: El sistema cambiará automáticamente el estado de la orden de compra a ""Recibida"" o ""Recibida con Observaciones"".",,,
+BUC-07: Controlar mermas y existencias de almacén,Jefe Almacén,"RF043: El sistema deberá permitir registrar incidentes de merma o pérdida de insumos químicos detallando el motivo (derrame, evaporación, rotura de envase, vencimiento).",CUS-15: Registrar merma o pérdida de insumos y herramientas,Jefe de Almacén,2
+,,RF044: El sistema deberá descontar de forma automática e inmediata del stock disponible físico la cantidad reportada como merma.,,,
+,,"RF045: El sistema deberá registrar la fecha, hora, costo financiero de la pérdida y el identificador del usuario que reporta la merma para fines de auditoría interna.",,,

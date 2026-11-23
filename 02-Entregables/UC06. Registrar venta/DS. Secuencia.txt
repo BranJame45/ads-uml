@@ -1,0 +1,369 @@
+@startuml
+!pragma teoz true
+skinparam sequenceArrowColor #8B0000
+skinparam sequenceLifeLineBorderColor #8B0000
+skinparam sequenceParticipantBorderColor #8B0000
+skinparam sequenceParticipantBackgroundColor #FFFFE0
+skinparam sequenceActorBorderColor #8B0000
+skinparam sequenceGroupBorderColor #8B0000
+skinparam shadowing false
+skinparam DefaultFontName Arial
+
+title DS_Registrar Venta (UC06)
+
+actor "Vendedor" as vendedor
+boundary "CI_VentanaSeleccionCliente" as b_sel_cliente
+boundary "CI_FormularioCobroReserva" as b_cobro_reserva
+boundary "CI_VentanaCatalogoCarrito" as b_catalogo
+boundary "CI_FormularioCobroFinal" as b_cobro_final
+boundary "CI_MensajeConfirmacion" as b_confirm
+boundary "CI_MensajeSistema" as b_msg
+control "CC_RegistrarVentaController" as ctrl
+entity "CE_cliente" as e_cliente
+entity "CE_venta" as e_venta
+entity "CE_detalle_venta" as e_detalle
+entity "CE_producto" as e_producto
+
+' =================== ARRANQUE (DIRECTO ACTOR -> CONTROLADOR) ===================
+vendedor -> ctrl : validarBtnRegistrarVenta(btnRegistrarVenta: String): bool
+activate ctrl
+
+ctrl -> ctrl : validarBoton(btnRegistrarVenta: String): bool
+
+break si validarBoton() == false
+  ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+  b_msg --> vendedor : [Error] Acceso no permitido
+end
+
+ctrl -> ctrl : validarRolVendedor(rolUsuario: String): bool
+
+break si validarRolVendedor() == false
+  ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+  b_msg --> vendedor : [Error] Privilegios insuficientes
+end
+
+ctrl -> b_sel_cliente : CI_VentanaSeleccionClienteShow()
+activate b_sel_cliente
+b_sel_cliente --> vendedor : Muestra VentanaSeleccionCliente con buscador vacío y tabla vacía
+
+' =================== RAMA 1: BUSCAR CLIENTE ===================
+group BUSCAR CLIENTE
+  vendedor -> b_sel_cliente : clickBuscarCliente(txtBuscarCliente: String, btnBuscarCliente: String)
+  b_sel_cliente -> ctrl : buscarCliente(textoBusqueda: String): void
+
+  ctrl -> e_cliente : buscarClientePorDocONombre(textoBusqueda: String): Object
+  activate e_cliente
+  e_cliente --> ctrl : datosCliente
+  deactivate e_cliente
+
+  break si datosCliente es null
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> vendedor : [Aviso] Cliente no encontrado
+  end
+
+  ctrl -> b_sel_cliente : CI_VentanaSeleccionClienteShow(datosCliente: Object)
+  b_sel_cliente --> vendedor : Muestra datos del cliente en la tarjeta de pantalla
+end
+
+' =================== RAMA 2: COMPLETAR RESERVA EXISTENTE ===================
+group COMPLETAR RESERVA EXISTENTE
+  vendedor -> b_sel_cliente : clickCompletarReserva(btnCompletarReserva: String)
+  b_sel_cliente -> ctrl : validarBtnCompletarReserva(btnCompletarReserva: String): bool
+
+  ctrl -> ctrl : validarBoton(btnCompletarReserva: String): bool
+
+  break si validarBoton() == false
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> vendedor : [Error] Acceso no permitido
+  end
+
+  ctrl -> ctrl : validarSeleccionCliente(id_cliente: int): bool
+
+  break si validarSeleccionCliente() == false
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> vendedor : [Error] Debe seleccionar un cliente para completar una reserva
+  end
+
+  ctrl -> e_venta : obtenerReservasPendientes(id_cliente: int): List
+  activate e_venta
+  e_venta --> ctrl : reservasPendientes
+  deactivate e_venta
+
+  break si reservasPendientes está vacía
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> vendedor : [Aviso] El cliente no tiene reservas pendientes
+  end
+
+  ctrl -> e_detalle : obtenerDetalleReserva(id_venta: int): List
+  activate e_detalle
+  e_detalle --> ctrl : detalleReserva
+  deactivate e_detalle
+
+  ctrl -> b_cobro_reserva : CI_FormularioCobroReservaShow(datosReserva: Object, detalleReserva: List)
+  activate b_cobro_reserva
+  b_cobro_reserva --> vendedor : Muestra FormularioCobroReserva con saldo pendiente y detalle de ítems
+
+  alt el usuario presiona btnCancelar
+    vendedor -> b_cobro_reserva : clickCancelar(btnCancelar: String)
+    b_cobro_reserva --> vendedor : Redireccionar al panel Selección de Cliente
+  else el usuario presiona btnConfirmarPago
+    vendedor -> b_cobro_reserva : ingresarDatos(metodo_pago: String, montoIngresado: double, btnConfirmarPago: String)
+    b_cobro_reserva -> ctrl : validarBtnConfirmarPago(btnConfirmarPago: String): bool
+
+    ctrl -> ctrl : validarBoton(btnConfirmarPago: String): bool
+
+    break si validarBoton() == false
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> vendedor : [Error] Acceso no permitido
+    end
+
+    ctrl -> ctrl : validarMontoReserva(montoIngresado: double, saldoPendiente: double): bool
+
+    break si validarMontoReserva() == false
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> vendedor : [Error] El monto debe cubrir el saldo completo de la reserva
+    end
+
+    ctrl -> e_venta : registrarPago(id_venta: int, metodo_pago: String, monto: double): bool
+    activate e_venta
+    e_venta --> ctrl : confirmacionPago
+    deactivate e_venta
+
+    ctrl -> e_venta : actualizarVentaCompletada(id_venta: int): bool
+    activate e_venta
+    e_venta --> ctrl : confirmacionVenta
+    deactivate e_venta
+
+    ctrl -> e_producto : liberarYDescontarStock(id_prod: int, cantidad: int): bool
+    activate e_producto
+    e_producto --> ctrl : confirmacionStock
+    deactivate e_producto
+
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> vendedor : [Éxito] Venta completada. Comprobante generado
+
+    ctrl -> b_sel_cliente : CI_VentanaSeleccionClienteShow()
+    b_sel_cliente --> vendedor : Muestra VentanaSeleccionCliente
+  end
+
+  deactivate b_cobro_reserva
+end
+
+' =================== RAMA 3: INICIAR NUEVA VENTA ===================
+group INICIAR NUEVA VENTA
+  vendedor -> b_sel_cliente : clickIniciarNuevaVenta(btnIniciarNuevaVenta: String)
+  b_sel_cliente -> ctrl : validarBtnIniciarNuevaVenta(btnIniciarNuevaVenta: String): bool
+
+  ctrl -> ctrl : validarBoton(btnIniciarNuevaVenta: String): bool
+
+  break si validarBoton() == false
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> vendedor : [Error] Acceso no permitido
+  end
+
+  ctrl -> ctrl : validarSeleccionCliente(id_cliente: int): bool
+
+  opt si validarSeleccionCliente() == false (sin cliente seleccionado)
+    ctrl -> b_confirm : CI_MensajeConfirmacionShow(msg: String)
+    activate b_confirm
+    b_confirm --> vendedor : Muestra Confirmación "Se emitirá una Boleta a Público General. ¿Está seguro?" (btnAceptar, btnCancelar)
+
+    alt el usuario presiona btnCancelar
+      vendedor -> b_confirm : clickCancelar(btnCancelar: String)
+      b_confirm --> vendedor : Redireccionar al panel Selección de Cliente
+      deactivate b_confirm
+    else el usuario presiona btnAceptar
+      vendedor -> b_confirm : clickAceptar(btnAceptar: String)
+      b_confirm -> ctrl : validarBtnAceptar(btnAceptar: String): bool
+      deactivate b_confirm
+
+      ctrl -> ctrl : validarBoton(btnAceptar: String): bool
+
+      break si validarBoton() == false
+        ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+        b_msg --> vendedor : [Error] Acceso no permitido
+      end
+    end
+  end
+
+  ctrl -> e_producto : obtenerProductosDisponibles(): List
+  activate e_producto
+  e_producto --> ctrl : listadoProductos
+  deactivate e_producto
+
+  ctrl -> b_catalogo : CI_VentanaCatalogoCarritoShow(listadoProductos: List)
+  activate b_catalogo
+  b_catalogo --> vendedor : Muestra VentanaCatalogoCarrito con buscador izquierdo y carrito derecho vacío
+
+  ' --- SUB-RAMA 3.1: BUSCAR ÍTEM ---
+  group BUSCAR ÍTEM
+    vendedor -> b_catalogo : clickBuscarItem(txtBuscarItem: String, btnBuscarItem: String)
+    b_catalogo -> ctrl : buscarItem(textoBusqueda: String): void
+
+    ctrl -> e_producto : obtenerProductosFiltrados(textoBusqueda: String): List
+    activate e_producto
+    e_producto --> ctrl : listadoFiltrado
+    deactivate e_producto
+
+    ctrl -> b_catalogo : CI_VentanaCatalogoCarritoShow(listadoFiltrado: List)
+    b_catalogo --> vendedor : Muestra resultados actualizados en la grilla del catálogo
+  end
+
+  ' --- SUB-RAMA 3.2: AGREGAR AL CARRITO ---
+  group AGREGAR AL CARRITO
+    vendedor -> b_catalogo : clickAgregarCarrito(id_prod: int, cantidad: int, btnAgregarCarrito: String)
+    b_catalogo -> ctrl : validarBtnAgregarCarrito(btnAgregarCarrito: String): bool
+
+    ctrl -> ctrl : validarBoton(btnAgregarCarrito: String): bool
+
+    break si validarBoton() == false
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> vendedor : [Error] Acceso no permitido
+    end
+
+    ctrl -> ctrl : validarCantidad(cantidad: int): int
+
+    break si validarCantidad() == 0
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> vendedor : [Error] La cantidad ingresada debe ser mayor a cero
+    end
+
+    ctrl -> e_producto : verificarStockProducto(id_prod: int, cantidad: int): int
+    activate e_producto
+    e_producto --> ctrl : resultado
+    deactivate e_producto
+
+    break si resultado == 0
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> vendedor : [Error] Stock inválido o insuficiente para la cantidad solicitada
+    end
+
+    ctrl -> b_catalogo : CI_VentanaCatalogoCarritoShow(carritoActualizado: List)
+    b_catalogo --> vendedor : Muestra ítem actualizado en la grilla del carrito con Subtotal, IGV y Total General
+  end
+
+  ' --- SUB-RAMA 3.3: ELIMINAR ÍTEM DEL CARRITO ---
+  group ELIMINAR ÍTEM DEL CARRITO
+    vendedor -> b_catalogo : clickEliminarItem(id_prod: int, btnEliminarItem: String)
+    b_catalogo -> ctrl : validarBtnEliminarItem(btnEliminarItem: String): bool
+
+    ctrl -> ctrl : validarBoton(btnEliminarItem: String): bool
+
+    break si validarBoton() == false
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> vendedor : [Error] Acceso no permitido
+    end
+
+    ctrl -> b_catalogo : CI_VentanaCatalogoCarritoShow(carritoActualizado: List)
+    b_catalogo --> vendedor : Actualiza grilla del carrito en pantalla con totales recalculados
+  end
+
+  ' --- SUB-RAMA 3.4: PROCESAR VENTA ---
+  group PROCESAR VENTA
+    vendedor -> b_catalogo : clickProcesarVenta(tipoComprobante: String, btnProcesarVenta: String)
+    b_catalogo -> ctrl : validarBtnProcesarVenta(btnProcesarVenta: String): bool
+
+    ctrl -> ctrl : validarBoton(btnProcesarVenta: String): bool
+
+    break si validarBoton() == false
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> vendedor : [Error] Acceso no permitido
+    end
+
+    ctrl -> ctrl : validarCarritoNoVacio(): bool
+
+    break si validarCarritoNoVacio() == false
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> vendedor : [Error] Debe agregar productos al carrito
+    end
+
+    ctrl -> ctrl : validarComprobanteCliente(tipoComprobante: String, id_cliente: int): bool
+
+    break si validarComprobanteCliente() == false
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> vendedor : [Error] Para emitir FACTURA debe elegir un cliente registrado. Vuelva a Selección de Cliente.
+    end
+
+    ctrl -> b_cobro_final : CI_FormularioCobroFinalShow(resumenVenta: Object)
+    activate b_cobro_final
+    b_cobro_final --> vendedor : Muestra FormularioCobroFinal con resumen de la venta
+
+    alt el usuario presiona btnCancelar
+      vendedor -> b_cobro_final : clickCancelar(btnCancelar: String)
+      b_cobro_final --> vendedor : Limpia arreglo temporal en sesión y redirecciona al panel Selección de Cliente
+    else el usuario presiona btnConfirmarTransaccion
+      vendedor -> b_cobro_final : ingresarDatos(metodo_pago: String, montoIngresado: double, btnConfirmarTransaccion: String)
+      b_cobro_final -> ctrl : validarBtnConfirmarTransaccion(btnConfirmarTransaccion: String): bool
+
+      ctrl -> ctrl : validarBoton(btnConfirmarTransaccion: String): bool
+
+      break si validarBoton() == false
+        ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+        b_msg --> vendedor : [Error] Acceso no permitido
+      end
+
+      alt si montoIngresado < totalGeneral (Crear Reserva)
+        ctrl -> e_venta : registrarVenta(id_cliente: int, id_usuario: int, num_comprobante: String, tipo_comprobante: String, total: double, adelanto: double, saldo: double, metodo_pago: String, estado: String): int
+        activate e_venta
+        e_venta --> ctrl : id_venta
+        deactivate e_venta
+
+        ctrl -> e_detalle : registrarDetalleVenta(id_venta: int, id_prod: int, cantidad: int, precio_unitario: double, subtotal: double): bool
+        activate e_detalle
+        e_detalle --> ctrl : confirmacionDetalle
+        deactivate e_detalle
+
+        ctrl -> e_producto : separarStockProducto(id_prod: int, cantidad: int): bool
+        activate e_producto
+        e_producto --> ctrl : confirmacionStock
+        deactivate e_producto
+
+        ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+        b_msg --> vendedor : [Éxito] Reserva registrada con éxito
+
+        ctrl -> b_sel_cliente : CI_VentanaSeleccionClienteShow()
+        b_sel_cliente --> vendedor : Muestra VentanaSeleccionCliente
+      else si montoIngresado >= totalGeneral (Venta Total)
+        ctrl -> e_venta : registrarPago(id_venta: int, metodo_pago: String, monto: double): bool
+        activate e_venta
+        e_venta --> ctrl : confirmacionPago
+        deactivate e_venta
+
+        ctrl -> e_venta : obtenerCorrelativoComprobante(tipo_comprobante: String): String
+        activate e_venta
+        e_venta --> ctrl : num_comprobante
+        deactivate e_venta
+
+        ctrl -> e_venta : registrarVenta(id_cliente: int, id_usuario: int, num_comprobante: String, tipo_comprobante: String, total: double, adelanto: double, saldo: double, metodo_pago: String, estado: String): int
+        activate e_venta
+        e_venta --> ctrl : id_venta
+        deactivate e_venta
+
+        ctrl -> e_detalle : registrarDetalleVenta(id_venta: int, id_prod: int, cantidad: int, precio_unitario: double, subtotal: double): bool
+        activate e_detalle
+        e_detalle --> ctrl : confirmacionDetalle
+        deactivate e_detalle
+
+        ctrl -> e_producto : descontarStockFisico(id_prod: int, cantidad: int): bool
+        activate e_producto
+        e_producto --> ctrl : confirmacionStock
+        deactivate e_producto
+
+        ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+        b_msg --> vendedor : [Éxito] Venta registrada. Comprobante generado
+
+        ctrl -> b_sel_cliente : CI_VentanaSeleccionClienteShow()
+        b_sel_cliente --> vendedor : Muestra VentanaSeleccionCliente
+      end
+    end
+
+    deactivate b_cobro_final
+  end
+
+  deactivate b_catalogo
+end
+
+deactivate b_sel_cliente
+deactivate ctrl
+
+@enduml

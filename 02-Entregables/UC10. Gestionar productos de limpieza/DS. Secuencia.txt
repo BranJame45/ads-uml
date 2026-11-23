@@ -1,0 +1,299 @@
+@startuml
+!pragma teoz true
+skinparam sequenceArrowColor #8B0000
+skinparam sequenceLifeLineBorderColor #8B0000
+skinparam sequenceParticipantBorderColor #8B0000
+skinparam sequenceParticipantBackgroundColor #FFFFE0
+skinparam sequenceActorBorderColor #8B0000
+skinparam sequenceGroupBorderColor #8B0000
+skinparam shadowing false
+skinparam DefaultFontName Arial
+
+title DS_Gestionar Productos de Limpieza (UC10)
+
+actor "Encargado de Almacén" as encargado
+boundary "CI_VentanaGestionarProducto" as b_ventana
+boundary "CI_FormularioProducto" as b_form
+boundary "CI_MensajeConfirmacion" as b_confirm
+boundary "CI_MensajeSistema" as b_msg
+control "CC_GestionarProductoController" as ctrl
+entity "CE_producto" as e_producto
+entity "CE_categoria" as e_categoria
+entity "CE_unidad_medida" as e_unidad
+
+' =================== ARRANQUE (DIRECTO ACTOR -> CONTROLADOR) ===================
+encargado -> ctrl : validarBtnGestionarProductos(btnGestionarProductos: String): bool
+activate ctrl
+
+ctrl -> ctrl : validarBoton(btnGestionarProductos: String): bool
+
+break si validarBoton() == false
+  ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+  b_msg --> encargado : [Error] Acceso no permitido
+end
+
+ctrl -> ctrl : validarRolEncargadoAlmacen(rolUsuario: String): bool
+
+break si validarRolEncargadoAlmacen() == false
+  ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+  b_msg --> encargado : [Error] Privilegios insuficientes
+end
+
+ctrl -> e_producto : obtenerProductosActivos(): List
+activate e_producto
+e_producto --> ctrl : listadoProductos
+deactivate e_producto
+
+ctrl -> b_ventana : CI_VentanaGestionarProductoShow(listadoProductos: List)
+activate b_ventana
+b_ventana --> encargado : Muestra VentanaGestionarProducto con listado (resaltando críticos)
+
+' =================== RAMA BUSCAR ===================
+group BUSCAR PRODUCTO
+  encargado -> b_ventana : clickBuscar(txtBuscador: String, btnBuscar: String)
+  b_ventana -> ctrl : buscarProductos(textoBusqueda: String): void
+
+  ctrl -> ctrl : validarCampoBusqueda(textoBusqueda: String): bool
+
+  break si validarCampoBusqueda() == false
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> encargado : [Error] Debe ingresar un nombre o categoría para buscar
+  end
+
+  ctrl -> e_producto : obtenerProductosFiltrados(textoBusqueda: String): List
+  activate e_producto
+  e_producto --> ctrl : listadoFiltrado
+  deactivate e_producto
+
+  ctrl -> b_ventana : CI_VentanaGestionarProductoShow(listadoFiltrado: List)
+  b_ventana --> encargado : Actualiza grilla con los resultados
+end
+
+' =================== RAMA AGREGAR ===================
+group AGREGAR PRODUCTO
+  encargado -> b_ventana : clickNuevoProducto(btnNuevoProducto: String)
+  b_ventana -> ctrl : validarBtnNuevoProducto(btnNuevoProducto: String): bool
+
+  ctrl -> ctrl : validarBoton(btnNuevoProducto: String): bool
+
+  break si validarBoton() == false
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> encargado : [Error] Acceso no permitido
+  end
+
+  ctrl -> e_categoria : obtenerCategoriasActivas(): List
+  activate e_categoria
+  e_categoria --> ctrl : listadoCategorias
+  deactivate e_categoria
+
+  ctrl -> e_unidad : obtenerUnidadesActivas(): List
+  activate e_unidad
+  e_unidad --> ctrl : listadoUnidades
+  deactivate e_unidad
+
+  ctrl -> b_form : CI_FormularioProductoShow(listadoCategorias: List, listadoUnidades: List)
+  activate b_form
+  b_form --> encargado : Muestra FormularioProducto vacío con combos precargados
+
+  alt el usuario presiona btnCancelar
+    encargado -> b_form : clickCancelar(btnCancelar: String)
+    b_form --> encargado : Cerrar modal y mantener vista actual
+  else el usuario presiona btnGuardar
+    encargado -> b_form : ingresarDatos(nombre: String, descripcion: String, id_categoria: int, id_unidad: int, precio_venta: double, stock_minimo: int, btnGuardar: String)
+    b_form -> ctrl : validarBtnGuardar(btnGuardar: String): bool
+
+    ctrl -> ctrl : validarBoton(btnGuardar: String): bool
+
+    break si validarBoton() == false
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> encargado : [Error] Acceso no permitido
+    end
+
+    ctrl -> ctrl : validarCampos(nombre: String, id_categoria: int, id_unidad: int, precio_venta: double, stock_minimo: int): int
+
+    break si validarCampos() == 0
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> encargado : [Error] El nombre, categoría, unidad, precio de venta y stock mínimo son obligatorios
+    end
+
+    ctrl -> e_producto : verificarNombreDuplicado(nombre: String): int
+    activate e_producto
+    e_producto --> ctrl : resultado
+    deactivate e_producto
+
+    break Si resultado != 0
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> encargado : [Error] Ya existe un producto registrado con ese nombre
+    end
+
+    ctrl -> e_producto : registrarProducto(nombre: String, descripcion: String, id_categoria: int, id_unidad: int, precio_venta: double, stock_minimo: int): int
+    activate e_producto
+    e_producto --> ctrl : id_producto
+    deactivate e_producto
+
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> encargado : [Éxito] Producto registrado correctamente
+
+    ctrl -> e_producto : obtenerProductosActivos(): List
+    activate e_producto
+    e_producto --> ctrl : listadoProductos
+    deactivate e_producto
+
+    ctrl -> b_ventana : CI_VentanaGestionarProductoShow(listadoProductos: List)
+    b_ventana --> encargado : Muestra VentanaGestionarProducto
+  end
+
+  deactivate b_form
+end
+
+' =================== RAMA EDITAR ===================
+group EDITAR PRODUCTO
+  encargado -> b_ventana : clickEditarProducto(btnEditarProducto: String, id_prod: int)
+  b_ventana -> ctrl : validarBtnEditarProducto(btnEditarProducto: String): bool
+
+  ctrl -> ctrl : validarBoton(btnEditarProducto: String): bool
+
+  break si validarBoton() == false
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> encargado : [Error] Acceso no permitido
+  end
+
+  ctrl -> e_producto : obtenerDatosProducto(id_prod: int): Object
+  activate e_producto
+  e_producto --> ctrl : datosProducto
+  deactivate e_producto
+
+  break si datosProducto es null
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> encargado : [Error] El producto solicitado no existe
+  end
+
+  ctrl -> e_categoria : obtenerCategoriasActivas(): List
+  activate e_categoria
+  e_categoria --> ctrl : listadoCategorias
+  deactivate e_categoria
+
+  ctrl -> e_unidad : obtenerUnidadesActivas(): List
+  activate e_unidad
+  e_unidad --> ctrl : listadoUnidades
+  deactivate e_unidad
+
+  ctrl -> b_form : CI_FormularioProductoShow(datosProducto: Object, listadoCategorias: List, listadoUnidades: List)
+  activate b_form
+  b_form --> encargado : Muestra FormularioProducto con datos cargados (combos con selección actual, stock actual en sólo lectura)
+
+  alt el usuario presiona btnCancelar
+    encargado -> b_form : clickCancelar(btnCancelar: String)
+    b_form --> encargado : Cerrar modal y mantener vista actual
+  else el usuario presiona btnGuardar
+    encargado -> b_form : modificarDatos(nombre: String, id_categoria: int, id_unidad: int, precio_venta: double, stock_minimo: int, btnGuardar: String)
+    b_form -> ctrl : validarBtnGuardar(btnGuardar: String): bool
+
+    ctrl -> ctrl : validarBoton(btnGuardar: String): bool
+
+    break si validarBoton() == false
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> encargado : [Error] Acceso no permitido
+    end
+
+    ctrl -> ctrl : validarCampos(nombre: String, id_categoria: int, id_unidad: int, precio_venta: double, stock_minimo: int): int
+
+    break si validarCampos() == 0
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> encargado : [Error] El nombre, categoría, unidad, precio de venta y stock mínimo son obligatorios
+    end
+
+    ctrl -> e_producto : verificarNombreEnOtroProducto(nombre: String, id_prod: int): int
+    activate e_producto
+    e_producto --> ctrl : resultado
+    deactivate e_producto
+
+    break Si resultado != 0
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> encargado : [Error] El nombre ya está siendo usado por otro producto
+    end
+
+    ctrl -> e_producto : actualizarProducto(id_prod: int, nombre: String, id_categoria: int, id_unidad: int, precio_venta: double, stock_minimo: int): bool
+    activate e_producto
+    e_producto --> ctrl : confirmacion
+    deactivate e_producto
+
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> encargado : [Éxito] Datos del producto actualizados correctamente
+
+    ctrl -> e_producto : obtenerProductosActivos(): List
+    activate e_producto
+    e_producto --> ctrl : listadoProductos
+    deactivate e_producto
+
+    ctrl -> b_ventana : CI_VentanaGestionarProductoShow(listadoProductos: List)
+    b_ventana --> encargado : Muestra VentanaGestionarProducto
+  end
+
+  deactivate b_form
+end
+
+' =================== RAMA DAR DE BAJA ===================
+group DAR DE BAJA PRODUCTO
+  encargado -> b_ventana : clickDarBajaProducto(btnDarBajaProducto: String, id_prod: int)
+  b_ventana -> ctrl : validarBtnDarBajaProducto(btnDarBajaProducto: String): bool
+
+  ctrl -> ctrl : validarBoton(btnDarBajaProducto: String): bool
+
+  break si validarBoton() == false
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> encargado : [Error] Acceso no permitido
+  end
+
+  ctrl -> b_confirm : CI_MensajeConfirmacionShow(msg: String)
+  activate b_confirm
+  b_confirm --> encargado : Muestra MensajeConfirmacion (btnAceptar, btnCancelar)
+
+  alt el usuario presiona btnCancelar
+    encargado -> b_confirm : clickCancelar(btnCancelar: String)
+    b_confirm --> encargado : Cerrar confirmación y mantener vista actual
+    deactivate b_confirm
+  else el usuario presiona btnAceptar
+    encargado -> b_confirm : clickAceptar(btnAceptar: String)
+    b_confirm -> ctrl : validarBtnAceptar(btnAceptar: String): bool
+    deactivate b_confirm
+
+    ctrl -> ctrl : validarBoton(btnAceptar: String): bool
+
+    break si validarBoton() == false
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> encargado : [Error] Acceso no permitido
+    end
+
+    ctrl -> e_producto : verificarExistenciaActiva(id_prod: int): int
+    activate e_producto
+    e_producto --> ctrl : resultado
+    deactivate e_producto
+
+    break si resultado == 0
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> encargado : [Error] El producto solicitado no existe
+    end
+
+    ctrl -> e_producto : desactivarProducto(id_prod: int): bool
+    activate e_producto
+    e_producto --> ctrl : confirmacion
+    deactivate e_producto
+
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> encargado : [Éxito] Producto dado de baja correctamente
+
+    ctrl -> e_producto : obtenerProductosActivos(): List
+    activate e_producto
+    e_producto --> ctrl : listadoProductos
+    deactivate e_producto
+
+    ctrl -> b_ventana : CI_VentanaGestionarProductoShow(listadoProductos: List)
+    b_ventana --> encargado : Muestra VentanaGestionarProducto
+  end
+end
+
+deactivate b_ventana
+deactivate ctrl
+
+@enduml

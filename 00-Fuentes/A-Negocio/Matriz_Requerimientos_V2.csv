@@ -1,0 +1,27 @@
+ID_RF,Requerimiento Funcional,Caso de Uso (CUS),Actor
+RF-01,El sistema deberá permitir validar las credenciales de acceso del trabajador.,UC01. Autenticar usuario,Usuario
+RF-02,El sistema deberá permitir cambiar la contraseña actual por una nueva.,UC02. Actualizar clave,Usuario
+RF-03,El sistema deberá permitir enviar o generar un token/enlace para recuperar una contraseña olvidada.,UC03. Recuperar clave,Usuario
+RF-04,El sistema deberá permitir registrar editar y deshabilitar cuentas de trabajadores.,UC04. Gestionar usuarios,Administrador
+RF-05,El sistema deberá permitir registrar editar y eliminar los datos de contacto de clientes.,UC05. Gestionar clientes,Vendedor
+RF-06,El sistema deberá validar que el DNI o RUC del cliente no se encuentre duplicado.,UC05. Gestionar clientes,Vendedor
+RF-07,El sistema deberá permitir buscar productos de limpieza e insumos químicos para agregarlos al carrito de ventas.,UC06. Registrar venta,Vendedor
+RF-08,El sistema deberá calcular automáticamente el importe total a pagar.,UC06. Registrar venta,Vendedor
+RF-09,El sistema deberá permitir registrar el método de pago (Efectivo Yape BCP).,UC06. Registrar venta,Vendedor
+RF-10,El sistema deberá permitir marcar la venta con el estado Reservado al recibir un pago de adelanto.,UC06. Registrar venta,Vendedor
+RF-11,El sistema deberá cambiar el estado a Completado cuando se cancele el saldo total de una reserva.,UC06. Registrar venta,Vendedor
+RF-12,El sistema deberá generar el comprobante de pago (boleta/factura) al completar la venta.,UC06. Registrar venta,Vendedor
+RF-13,El sistema deberá actualizar (descontar) automáticamente el stock al completar una venta o separar stock al crear una reserva.,UC06. Registrar venta,Vendedor
+RF-14,El sistema deberá permitir buscar una venta mediante el comprobante para iniciar un reclamo.,UC07. Atender reclamo y devolución,Vendedor
+RF-15,El sistema deberá permitir registrar la devolución del producto y actualizar el stock.,UC07. Atender reclamo y devolución,Vendedor
+RF-16,El sistema deberá permitir registrar editar y eliminar información de las empresas proveedoras.,UC08. Gestionar proveedores,Encargado de Almacén
+RF-17,El sistema deberá permitir registrar editar y eliminar el catálogo de insumos químicos (materia prima).,UC09. Gestionar insumos químicos,Encargado de Almacén
+RF-18,El sistema deberá permitir registrar editar y eliminar el catálogo de productos de limpieza (terminados).,UC10. Gestionar productos de limpieza,Encargado de Almacén
+RF-19,El sistema deberá permitir registrar la entrada de insumos o productos al almacén vinculando al proveedor.,UC11. Registrar ingreso de mercancía,Encargado de Almacén
+RF-20,El sistema deberá sumar automáticamente el stock físico tras el registro de ingreso.,UC11. Registrar ingreso de mercancía,Encargado de Almacén
+RF-21,El sistema deberá permitir registrar la cantidad de producto terminado elaborado.,UC12. Registrar producción,Encargado de Almacén
+RF-22,El sistema deberá descontar automáticamente los insumos utilizados según receta y sumar el producto terminado.,UC12. Registrar producción,Encargado de Almacén
+RF-23,El sistema deberá permitir reportar la pérdida o daño de un producto/insumo.,UC13. Registrar merma o pérdida,Encargado de Almacén
+RF-24,El sistema deberá descontar del stock la cantidad reportada como merma.,UC13. Registrar merma o pérdida,Encargado de Almacén
+RF-25,El sistema deberá permitir listar todos los movimientos (entradas salidas mermas reservas) del inventario Kardex.,UC14. Gestionar movimientos de inventario,Encargado de Almacén
+RF-26,El sistema deberá permitir a un usuario autorizado anular un movimiento erróneo revirtiendo sus efectos en el stock.,UC14. Gestionar movimientos de inventario,Encargado de Almacén

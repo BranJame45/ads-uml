@@ -1,0 +1,252 @@
+@startuml
+skinparam ClassBackgroundColor #FFFFE0
+skinparam ClassBorderColor #8B0000
+skinparam ArrowColor #8B0000
+skinparam ClassStereotypeFontColor #8B0000
+skinparam ClassHeaderBackgroundColor #F5E6E6
+skinparam shadowing false
+skinparam DefaultFontName Arial
+
+title DO_Registrar Venta (UC06)
+
+' ============================================================
+' AGENTE
+' ============================================================
+class "Vendedor" as a_vendedor <<Agente>>
+
+' ============================================================
+' FRONTERAS (vistas del DA + controles de UI, sin PanelPrincipal)
+' ============================================================
+class "CI_VentanaSeleccionCliente" as b_sel_cliente <<Frontera>> {
+  + txtBuscarCliente
+  + btnBuscarCliente
+  + lblNombre
+  + lblDocumento
+  + btnCompletarReserva
+  + btnIniciarNuevaVenta
+  --
+  + CI_VentanaSeleccionClienteShow()
+  + clickBuscarCliente()
+  + clickCompletarReserva()
+  + clickIniciarNuevaVenta()
+}
+
+class "CI_FormularioCobroReserva" as b_cobro_reserva <<Frontera>> {
+  + listadoDetalleReserva
+  + lblSaldoPendiente
+  + cboMetodoPago
+  + txtMontoIngresado
+  + btnConfirmarPago
+  + btnCancelar
+  --
+  + CI_FormularioCobroReservaShow()
+  + clickCancelar()
+  + ingresarDatos()
+}
+
+class "CI_VentanaCatalogoCarrito" as b_catalogo <<Frontera>> {
+  + txtBuscarItem
+  + btnBuscarItem
+  + listadoProductos
+  + txtCantidad
+  + btnAgregarCarrito
+  + cboTipoComprobante
+  + listadoCarrito
+  + btnEliminarItem
+  + lblSubtotal
+  + lblIGV
+  + lblTotalGeneral
+  + btnProcesarVenta
+  --
+  + CI_VentanaCatalogoCarritoShow()
+  + clickBuscarItem()
+  + clickAgregarCarrito()
+  + clickEliminarItem()
+  + clickProcesarVenta()
+}
+
+class "CI_FormularioCobroFinal" as b_cobro_final <<Frontera>> {
+  + resumenVenta
+  + cboMetodoPago
+  + txtMontoIngresado
+  + btnConfirmarTransaccion
+  + btnCancelar
+  --
+  + CI_FormularioCobroFinalShow()
+  + clickCancelar()
+  + ingresarDatos()
+}
+
+class "CI_MensajeConfirmacion" as b_confirm <<Frontera>> {
+  + mensaje : String
+  + btnAceptar
+  + btnCancelar
+  --
+  + CI_MensajeConfirmacionShow()
+  + clickCancelar()
+  + clickAceptar()
+}
+
+class "CI_MensajeSistema" as b_msg <<Frontera>> {
+  + mensaje : String
+  + descripcion : String
+  + link : String
+  --
+  + CI_MensajeSistemaShow()
+}
+
+' ============================================================
+' CONTROLADOR (solo métodos que el DS le dirige: validar*/buscar*)
+' ============================================================
+class "CC_RegistrarVentaController" as ctrl <<Controlador>> {
+  + validarBtnRegistrarVenta()
+  + validarBoton()
+  + validarRolVendedor()
+  + buscarCliente()
+  + validarBtnCompletarReserva()
+  + validarSeleccionCliente()
+  + validarBtnConfirmarPago()
+  + validarMontoReserva()
+  + validarBtnIniciarNuevaVenta()
+  + validarBtnAceptar()
+  + buscarItem()
+  + validarBtnAgregarCarrito()
+  + validarCantidad()
+  + validarBtnEliminarItem()
+  + validarBtnProcesarVenta()
+  + validarCarritoNoVacio()
+  + validarComprobanteCliente()
+  + validarBtnConfirmarTransaccion()
+}
+
+' ============================================================
+' ENTIDADES (atributos SQL del DA + métodos recibidos en el DS)
+' ============================================================
+class "CE_cliente" as e_cliente <<Entidad>> {
+  - id_cliente : INT
+  - tipo_documento : VARCHAR(10)
+  - documento : VARCHAR(15)
+  - nombre : VARCHAR(100)
+  - telefono : VARCHAR(20)
+  - correo : VARCHAR(100)
+  - direccion : VARCHAR(150)
+  - estado : VARCHAR(10)
+  --
+  + buscarClientePorDocONombre()
+}
+
+class "CE_venta" as e_venta <<Entidad>> {
+  - id_venta : INT
+  - id_cliente : INT (FK)
+  - id_usuario : INT (FK)
+  - fecha : DATETIME
+  - num_comprobante : VARCHAR(20)
+  - tipo_comprobante : VARCHAR(20)
+  - total : DECIMAL(10,2)
+  - adelanto : DECIMAL(10,2)
+  - saldo : DECIMAL(10,2)
+  - metodo_pago : VARCHAR(30)
+  - estado : VARCHAR(15)
+  --
+  + obtenerReservasPendientes()
+  + registrarPago()
+  + actualizarVentaCompletada()
+  + obtenerCorrelativoComprobante()
+  + registrarVenta()
+}
+
+class "CE_detalle_venta" as e_detalle <<Entidad>> {
+  - id_detalle_venta : INT
+  - id_venta : INT (FK)
+  - id_prod : INT (FK)
+  - cantidad : INT
+  - precio_unitario : DECIMAL(10,2)
+  - subtotal : DECIMAL(10,2)
+  --
+  + obtenerDetalleReserva()
+  + registrarDetalleVenta()
+}
+
+class "CE_producto" as e_producto <<Entidad>> {
+  - id_prod : INT
+  - codigo : VARCHAR(20)
+  - nombre : VARCHAR(100)
+  - descripcion : TEXT
+  - id_categoria : INT (FK)
+  - id_unidad : INT (FK)
+  - precio_venta : DECIMAL(10,2)
+  - costo_unitario : DECIMAL(10,2)
+  - stock_minimo : INT
+  - stock_fisico : INT
+  - stock_separado : INT
+  - tipo : VARCHAR(20)
+  - estado : VARCHAR(10)
+  --
+  + obtenerProductosDisponibles()
+  + obtenerProductosFiltrados()
+  + verificarStockProducto()
+  + liberarYDescontarStock()
+  + separarStockProducto()
+  + descontarStockFisico()
+}
+
+' ============================================================
+' RELACIONES NUMERADAS (orden del DS, priorizando camino negativo)
+' ============================================================
+
+' -- Flujo inicial (Directo Actor -> Controlador) --
+a_vendedor      --> ctrl            : 1. validarBtnRegistrarVenta(btnRegistrarVenta)
+ctrl            --> b_sel_cliente   : 2. CI_VentanaSeleccionClienteShow()
+
+' -- Rama Buscar Cliente (sin isset por R4) --
+b_sel_cliente   --> ctrl            : 3a. [BUSCAR CLIENTE] buscarCliente(textoBusqueda)
+ctrl            --> e_cliente       : 4a. buscarClientePorDocONombre(textoBusqueda)
+ctrl            --> b_sel_cliente   : 5a. CI_VentanaSeleccionClienteShow(datosCliente)
+
+' -- Rama Completar Reserva Existente (1º Cancelar, 2º ConfirmarPago) --
+b_sel_cliente   --> ctrl            : 3b. [COMPLETAR RESERVA] Envía btnCompletarReserva
+ctrl            --> e_venta         : 4b. obtenerReservasPendientes(id_cliente)
+ctrl            --> e_detalle       : 5b. obtenerDetalleReserva(id_venta)
+ctrl            --> b_cobro_reserva : 6b. CI_FormularioCobroReservaShow(datosReserva, detalleReserva)
+a_vendedor      --> b_cobro_reserva : 7b-cancel. [alt-Cancelar] clickCancelar(btnCancelar) → vuelve a Selección
+b_cobro_reserva --> ctrl            : 7b. [else-ConfirmarPago] ingresarDatos(metodo_pago, montoIngresado, btnConfirmarPago)
+ctrl            --> e_venta         : 8b. registrarPago(id_venta, metodo_pago, monto)
+ctrl            --> e_venta         : 9b. actualizarVentaCompletada(id_venta)
+ctrl            --> e_producto      : 10b. liberarYDescontarStock(id_prod, cantidad)
+ctrl            --> b_sel_cliente   : 11b. CI_VentanaSeleccionClienteShow()
+
+' -- Rama Iniciar Nueva Venta (1º Cancelar, 2º Aceptar) --
+b_sel_cliente   --> ctrl            : 3c. [NUEVA VENTA] Envía btnIniciarNuevaVenta
+ctrl            --> b_confirm       : 4c. [si sin cliente] CI_MensajeConfirmacionShow(Público General)
+a_vendedor      --> b_confirm       : 5c-cancel. [alt-Cancelar] clickCancelar(btnCancelar) → vuelve a Selección
+b_confirm       --> ctrl            : 5c. [else-Aceptar] Envía btnAceptar
+ctrl            --> e_producto      : 6c. obtenerProductosDisponibles()
+ctrl            --> b_catalogo      : 7c. CI_VentanaCatalogoCarritoShow(listadoProductos)
+
+' -- Sub-ramas en Catálogo y Carrito --
+b_catalogo      --> ctrl            : 8c-1. [BUSCAR ÍTEM] buscarItem(textoBusqueda)
+ctrl            --> e_producto      : 9c-1. obtenerProductosFiltrados(textoBusqueda)
+ctrl            --> b_catalogo      : 10c-1. CI_VentanaCatalogoCarritoShow(listadoFiltrado)
+
+b_catalogo      --> ctrl            : 8c-2. [AGREGAR CARRITO] Envía btnAgregarCarrito(id_prod, cantidad)
+ctrl            --> e_producto      : 9c-2. verificarStockProducto(id_prod, cantidad)
+ctrl            --> b_catalogo      : 10c-2. CI_VentanaCatalogoCarritoShow(carritoActualizado)
+
+b_catalogo      --> ctrl            : 8c-3. [ELIMINAR ÍTEM] Envía btnEliminarItem(id_prod)
+ctrl            --> b_catalogo      : 9c-3. CI_VentanaCatalogoCarritoShow(carritoActualizado)
+
+b_catalogo      --> ctrl            : 8c-4. [PROCESAR VENTA] Envía btnProcesarVenta(tipoComprobante)
+ctrl            --> b_cobro_final   : 9c-4. CI_FormularioCobroFinalShow(resumenVenta)
+a_vendedor      --> b_cobro_final   : 10c-4-cancel. [alt-Cancelar] clickCancelar(btnCancelar) → limpia sesión y vuelve
+b_cobro_final   --> ctrl            : 10c-4. [else-Confirmar] ingresarDatos(metodo_pago, montoIngresado, btnConfirmarTransaccion)
+ctrl            --> e_venta         : 11c-4. [si Venta Total] registrarPago(id_venta, metodo_pago, monto)
+ctrl            --> e_venta         : 12c-4. [si Venta Total] obtenerCorrelativoComprobante(tipo_comprobante)
+ctrl            --> e_venta         : 13c-4. registrarVenta(id_cliente, id_usuario, num_comprobante, tipo_comprobante, total, adelanto, saldo, metodo_pago, estado)
+ctrl            --> e_detalle       : 14c-4. registrarDetalleVenta(id_venta, id_prod, cantidad, precio_unitario, subtotal)
+ctrl            --> e_producto      : 15c-4. separarStockProducto(id_prod, cantidad) / descontarStockFisico(id_prod, cantidad)
+ctrl            --> b_sel_cliente   : 16c-4. CI_VentanaSeleccionClienteShow()
+
+' -- Mensajes de sistema (éxito, aviso o validación fallida) --
+ctrl            --> b_msg           : * CI_MensajeSistemaShow() en éxito, aviso o validación fallida
+
+@enduml

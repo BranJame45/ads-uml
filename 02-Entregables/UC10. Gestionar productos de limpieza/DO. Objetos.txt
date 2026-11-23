@@ -1,0 +1,182 @@
+@startuml
+skinparam ClassBackgroundColor #FFFFE0
+skinparam ClassBorderColor #8B0000
+skinparam ArrowColor #8B0000
+skinparam ClassStereotypeFontColor #8B0000
+skinparam ClassHeaderBackgroundColor #F5E6E6
+skinparam shadowing false
+skinparam DefaultFontName Arial
+
+title DO_Gestionar Productos de Limpieza (UC10)
+
+' ============================================================
+' AGENTE
+' ============================================================
+class "Encargado de Almacén" as a_encargado <<Agente>>
+
+' ============================================================
+' FRONTERAS (vistas del DA + sus controles de UI, sin PanelPrincipal)
+' ============================================================
+class "CI_VentanaGestionarProducto" as b_ventana <<Frontera>> {
+  + listadoProductos
+  + txtBuscador
+  + btnBuscar
+  + btnNuevoProducto
+  + btnEditarProducto
+  + btnDarBajaProducto
+  --
+  + CI_VentanaGestionarProductoShow()
+  + clickBuscar()
+  + clickNuevoProducto()
+  + clickEditarProducto()
+  + clickDarBajaProducto()
+}
+
+class "CI_FormularioProducto" as b_form <<Frontera>> {
+  + txtNombre
+  + txtDescripcion
+  + cboCategoria
+  + cboUnidad
+  + txtPrecioVenta
+  + txtStockMinimo
+  + lblStockActual
+  + btnGuardar
+  + btnCancelar
+  --
+  + CI_FormularioProductoShow()
+  + clickCancelar()
+  + ingresarDatos()
+  + modificarDatos()
+}
+
+class "CI_MensajeConfirmacion" as b_confirm <<Frontera>> {
+  + mensaje : String
+  + btnAceptar
+  + btnCancelar
+  --
+  + CI_MensajeConfirmacionShow()
+  + clickCancelar()
+  + clickAceptar()
+}
+
+class "CI_MensajeSistema" as b_msg <<Frontera>> {
+  + mensaje : String
+  + descripcion : String
+  + link : String
+  --
+  + CI_MensajeSistemaShow()
+}
+
+' ============================================================
+' CONTROLADOR (solo métodos que el DS le dirige: validar*/buscar*)
+' ============================================================
+class "CC_GestionarProductoController" as ctrl <<Controlador>> {
+  + validarBtnGestionarProductos()
+  + validarBoton()
+  + validarRolEncargadoAlmacen()
+  + buscarProductos()
+  + validarCampoBusqueda()
+  + validarBtnNuevoProducto()
+  + validarBtnGuardar()
+  + validarCampos()
+  + validarBtnEditarProducto()
+  + validarBtnDarBajaProducto()
+  + validarBtnAceptar()
+}
+
+' ============================================================
+' ENTIDAD (atributos SQL del DA + métodos recibidos en el DS)
+' ============================================================
+class "CE_producto" as e_producto <<Entidad>> {
+  - id_prod : INT
+  - nombre : VARCHAR(100)
+  - descripcion : TEXT
+  - id_categoria : INT (FK)
+  - id_unidad : INT (FK)
+  - precio_venta : DECIMAL(10,2)
+  - stock_minimo : INT
+  - stock_fisico : INT
+  - tipo : VARCHAR(20)
+  - estado : VARCHAR(10)
+  --
+  + obtenerProductosActivos()
+  + obtenerProductosFiltrados()
+  + verificarNombreDuplicado()
+  + registrarProducto()
+  + obtenerDatosProducto()
+  + verificarNombreEnOtroProducto()
+  + actualizarProducto()
+  + verificarExistenciaActiva()
+  + desactivarProducto()
+}
+
+class "CE_categoria" as e_categoria <<Entidad>> {
+  - id_categoria : INT
+  - nombre : VARCHAR(50)
+  - estado : VARCHAR(10)
+  --
+  + obtenerCategoriasActivas()
+}
+
+class "CE_unidad_medida" as e_unidad <<Entidad>> {
+  - id_unidad : INT
+  - nombre : VARCHAR(30)
+  - abreviatura : VARCHAR(10)
+  - estado : VARCHAR(10)
+  --
+  + obtenerUnidadesActivas()
+}
+
+' ============================================================
+' RELACIONES NUMERADAS (orden del DS, priorizando camino negativo)
+' ============================================================
+
+' -- Flujo inicial (Directo Actor -> Controlador) --
+a_encargado --> ctrl        : 1. validarBtnGestionarProductos(btnGestionarProductos)
+ctrl        --> e_producto  : 2. obtenerProductosActivos() (estado='Activo' AND tipo='Terminado')
+ctrl        --> b_ventana   : 3. CI_VentanaGestionarProductoShow(listadoProductos)
+
+' -- Rama Buscar --
+b_ventana   --> ctrl        : 4a. [BUSCAR] buscarProductos(textoBusqueda)
+ctrl        --> e_producto  : 5a. obtenerProductosFiltrados(textoBusqueda)
+ctrl        --> b_ventana   : 6a. CI_VentanaGestionarProductoShow(listadoFiltrado)
+
+' -- Rama Agregar (1º Cancelar, 2º Guardar) --
+b_ventana   --> ctrl        : 4b. [AGREGAR] Envía btnNuevoProducto
+ctrl        --> e_categoria : 5b. obtenerCategoriasActivas()
+ctrl        --> e_unidad    : 6b. obtenerUnidadesActivas()
+ctrl        --> b_form      : 7b. CI_FormularioProductoShow(listadoCategorias, listadoUnidades) vacío
+a_encargado --> b_form      : 8b-cancel. [alt-Cancelar] clickCancelar(btnCancelar) → cierra modal
+b_form      --> ctrl        : 8b. [else-Guardar] ingresarDatos(..., btnGuardar)
+ctrl        --> e_producto  : 9b. verificarNombreDuplicado(nombre)
+ctrl        --> e_producto  : 10b. registrarProducto(..., id_categoria, id_unidad, ...) con stock_fisico=0 y estado='Activo'
+ctrl        --> e_producto  : 11b. obtenerProductosActivos()
+ctrl        --> b_ventana   : 12b. CI_VentanaGestionarProductoShow(listado)
+
+' -- Rama Editar (1º Cancelar, 2º Guardar) --
+b_ventana   --> ctrl        : 4c. [EDITAR] Envía btnEditarProducto
+ctrl        --> e_producto  : 5c. obtenerDatosProducto(id_prod)
+ctrl        --> e_categoria : 6c. obtenerCategoriasActivas()
+ctrl        --> e_unidad    : 7c. obtenerUnidadesActivas()
+ctrl        --> b_form      : 8c. CI_FormularioProductoShow(datosProducto, listadoCategorias, listadoUnidades) con stock en sólo lectura
+a_encargado --> b_form      : 9c-cancel. [alt-Cancelar] clickCancelar(btnCancelar) → cierra modal
+b_form      --> ctrl        : 9c. [else-Guardar] modificarDatos(..., btnGuardar)
+ctrl        --> e_producto  : 10c. verificarNombreEnOtroProducto(nombre, id_prod)
+ctrl        --> e_producto  : 11c. actualizarProducto(id_prod, nombre, id_categoria, id_unidad, precio_venta, stock_minimo)
+ctrl        --> e_producto  : 12c. obtenerProductosActivos()
+ctrl        --> b_ventana   : 13c. CI_VentanaGestionarProductoShow(listado)
+
+' -- Rama Dar de Baja (1º Cancelar, 2º Aceptar) --
+b_ventana   --> ctrl        : 4d. [DAR DE BAJA] Envía btnDarBajaProducto
+ctrl        --> b_confirm   : 5d. CI_MensajeConfirmacionShow()
+a_encargado --> b_confirm   : 6d-cancel. [alt-Cancelar] clickCancelar(btnCancelar) → cierra confirmación
+b_confirm   --> ctrl        : 6d. [else-Aceptar] Envía btnAceptar
+ctrl        --> e_producto  : 7d. verificarExistenciaActiva(id_prod)
+ctrl        --> e_producto  : 8d. desactivarProducto(id_prod) (soft delete, estado='Inactivo')
+ctrl        --> e_producto  : 9d. obtenerProductosActivos()
+ctrl        --> b_ventana   : 10d. CI_VentanaGestionarProductoShow(listado)
+
+' -- Mensajes de sistema (éxito o error de cualquier validación) --
+ctrl        --> b_msg       : * CI_MensajeSistemaShow() en éxito o validación fallida
+
+@enduml

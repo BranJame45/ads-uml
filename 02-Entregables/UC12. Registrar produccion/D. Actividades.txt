@@ -1,0 +1,118 @@
+@startuml
+scale 0.7
+skinparam ActivityBackgroundColor #FFFFE0
+skinparam ActivityBorderColor #8B0000
+skinparam ArrowColor #8B0000
+skinparam PartitionBorderColor #000000
+skinparam shadowing false
+skinparam DefaultFontName Arial
+
+title Diagrama de Actividades - UC12: Registrar Producción
+
+|Encargado de Almacén|
+start
+:Dar clic en el botón "Registrar Producción" del Panel Principal;
+
+|Sistema|
+:Validar btnRegistrarProduccion;
+if (isset(btnRegistrarProduccion)) then (False)
+  :Mostrar panel <Error> "Acceso no permitido";
+  stop
+else (TRUE)
+  :Mostrar ventana <Registro de Producción> con buscador vacío y área de receta oculta;
+
+  switch (Clic en ....)
+  case (boton <Buscar Producto>)
+    :Sanitizar texto de búsqueda;
+    :Verificar si el campo de búsqueda tiene contenido;
+    if (¿Campo de búsqueda vacío?) then (SI)
+      :Mostrar panel <Error> "Debe ingresar un nombre o código de producto";
+      stop
+    else (NO)
+      :Consultar en la BD productos tipo Terminado por nombre o código;
+      note right: SELECT id_prod, nombre, codigo, stock_fisico FROM Producto WHERE tipo = 'Terminado' AND estado = 'Activo' AND (nombre LIKE '%?%' OR codigo = ?)
+      :Verificar si el producto existe en BD;
+      if (¿Existe producto?) then (SI)
+        :Cargar datos del producto en variable temporal;
+        :Mostrar datos del producto en tarjeta y habilitar campo txtCantidadProducir y botón <Calcular Insumos>;
+        stop
+      else (NO)
+        :Mostrar panel <Aviso> "Producto no encontrado";
+        stop
+      endif
+    endif
+
+  case (boton <Calcular Insumos>)
+    :Validar btnCalcularInsumos;
+    if (isset(btnCalcularInsumos)) then (False)
+      :Mostrar panel <Error> "Acceso no permitido";
+      stop
+    else (TRUE)
+      :Verificar si hay un producto seleccionado en sesión;
+      if (¿Hay producto en sesión?) then (NO)
+        :Mostrar panel <Error> "Debe buscar y seleccionar un producto antes de calcular";
+        stop
+      else (SI)
+        :Sanitizar cantidad ingresada;
+        :Verificar cantidad ingresada;
+        if (¿Cantidad > 0?) then (NO)
+          :Mostrar panel <Error> "La cantidad a producir debe ser mayor a cero";
+          stop
+        else (SI)
+          :Consultar en la BD la receta del producto seleccionado;
+          note right: SELECT r.id_insumo, p.nombre, p.stock_fisico, r.cantidad_unitaria FROM Receta r INNER JOIN Producto p ON r.id_insumo = p.id_prod WHERE r.id_producto_terminado = ?
+          :Verificar si el producto tiene receta configurada;
+          if (¿Tiene receta?) then (NO)
+            :Mostrar panel <Error> "El producto seleccionado no tiene una receta asignada";
+            stop
+          else (SI)
+            :Multiplicar cantidad unitaria de cada insumo por la cantidad a producir;
+            :Almacenar resultado del cálculo en variables de sesión;
+            :Mostrar grilla con insumos requeridos, cantidades calculadas, stock actual y habilitar botón <Confirmar Producción>;
+            stop
+          endif
+        endif
+      endif
+    endif
+
+  case (boton <Confirmar Producción>)
+    :Validar btnConfirmarProduccion;
+    if (isset(btnConfirmarProduccion)) then (False)
+      :Mostrar panel <Error> "Acceso no permitido";
+      stop
+    else (TRUE)
+      :Verificar si existe la receta calculada en sesión;
+      if (¿Hay receta calculada en sesión?) then (NO)
+        :Mostrar panel <Error> "Debe calcular los insumos requeridos antes de confirmar";
+        stop
+      else (SI)
+        :Verificar en BD si el stock físico de cada insumo requerido es suficiente;
+        note right: SELECT id_prod, stock_fisico FROM Producto WHERE id_prod IN (?) AND tipo = 'Insumo'
+        if (¿Hay stock suficiente para todos los insumos?) then (NO)
+          :Mostrar panel <Error> "Stock insuficiente en uno o más insumos químicos para la producción solicitada";
+          stop
+        else (SI)
+          :Registrar en la BD la cabecera de la producción;
+          note right: INSERT INTO Produccion (id_producto, cantidad_producida, fecha, id_usuario) VALUES (?, ?, NOW(), ?)
+          :Registrar en la BD el detalle de insumos consumidos;
+          note right: INSERT INTO Produccion_Detalle (id_produccion, id_insumo, cantidad_consumida) VALUES (?, ?, ?)
+          :Descontar en la BD el stock físico de cada insumo químico utilizado;
+          note right: UPDATE Producto SET stock_fisico = stock_fisico - ? WHERE id_prod = ? AND tipo = 'Insumo'
+          :Sumar en la BD el stock físico del producto terminado fabricado;
+          note right: UPDATE Producto SET stock_fisico = stock_fisico + ? WHERE id_prod = ? AND tipo = 'Terminado'
+          :Limpiar variables temporales de la sesión;
+          :Mostrar panel <Éxito> "Producción registrada exitosamente. Inventario actualizado";
+          stop
+        endif
+      endif
+    endif
+
+  case (boton <Cancelar>)
+    :Limpiar variables temporales de la sesión;
+    :Redireccionar al Panel Principal;
+    stop
+
+  endswitch
+endif
+
+@enduml

@@ -1,0 +1,219 @@
+@startuml
+scale 0.4
+skinparam ActivityBackgroundColor #FFFFE0
+skinparam ActivityBorderColor #8B0000
+skinparam ArrowColor #8B0000
+skinparam PartitionBorderColor #000000
+skinparam shadowing false
+skinparam DefaultFontName Arial
+
+title Diagrama de Actividades - UC06: Registrar Venta
+
+|Vendedor|
+start
+:Dar clic en el botón "Registrar Venta" del Panel Principal;
+
+|Sistema|
+:Validar btnRegistrarVenta;
+if (isset(btnRegistrarVenta)) then (False)
+  :Mostrar panel <Error> "Acceso no permitido";
+  stop
+else (TRUE)
+  :Mostrar ventana <Selección de Cliente> con buscador vacío y tabla vacía;
+
+  switch (Clic en ....)
+  case (boton <Buscar Cliente>)
+    :Sanitizar input de búsqueda;
+    :Consultar en la BD clientes por documento o nombre;
+    note right: SELECT * FROM Cliente WHERE documento = ? OR nombre LIKE '%?%'
+    :Verificar si el cliente existe en BD;
+    if (¿Existe cliente?) then (SI)
+      :Cargar datos del cliente en variable temporal;
+      :Mostrar datos del cliente en la tarjeta de pantalla;
+      stop
+    else (NO)
+      :Mostrar panel <Aviso> "Cliente no encontrado";
+      stop
+    endif
+
+  case (boton <Completar Reserva Existente>)
+    :Validar btnCompletarReserva;
+    if (isset(btnCompletarReserva)) then (False)
+      :Mostrar panel <Error> "Acceso no permitido";
+      stop
+    else (TRUE)
+      :Verificar si hay cliente seleccionado en pantalla;
+      if (¿Hay cliente seleccionado?) then (NO)
+        :Mostrar panel <Error> "Debe seleccionar un cliente para completar una reserva";
+        stop
+      else (SI)
+        :Consultar en la BD las reservas pendientes del cliente;
+        note right: SELECT * FROM Venta WHERE id_cliente = ? AND estado = 'Reservada'
+        :Verificar si el cliente tiene reservas activas;
+        if (¿Tiene reservas?) then (NO)
+          :Mostrar panel <Aviso> "El cliente no tiene reservas pendientes";
+          stop
+        else (SI)
+          :Cargar datos de la reserva (Saldo pendiente y Detalle de ítems);
+          :Mostrar formulario <Cobro de Reserva> con los datos precargados;
+          if (Clic en ..) then (boton <Cancelar>)
+            :Redireccionar al panel <Selección de Cliente>;
+            stop
+          else (boton <Confirmar Pago>)
+            :Validar btnConfirmarPago;
+            if (isset(btnConfirmarPago)) then (False)
+              :Mostrar panel <Error> "Acceso no permitido";
+              stop
+            else (TRUE)
+              :Capturar método de pago y sanitizar monto ingresado;
+              :Verificar si el monto cubre el saldo restante;
+              if (¿Monto Ingresado >= Saldo Pendiente?) then (NO)
+                :Mostrar panel <Error> "El monto debe cubrir el saldo completo de la reserva";
+                stop
+              else (SI)
+                :Registrar en la BD el pago según el método seleccionado;
+                :Actualizar en la BD la venta a estado Completada;
+                note right: UPDATE Venta SET estado='Completada', saldo=0 WHERE id_venta=?
+                :Actualizar en la BD el stock físico y liberar stock separado;
+                note right: UPDATE Producto SET stock_separado = stock_separado - cant, stock_fisico = stock_fisico - cant WHERE id_prod=?
+                :Generar el comprobante (Boleta/Factura);
+                :Mostrar panel <Éxito> "Venta completada. Comprobante generado";
+                stop
+              endif
+            endif
+          endif
+        endif
+      endif
+    endif
+
+  case (boton <Iniciar Nueva Venta>)
+    :Validar btnIniciarNuevaVenta;
+    if (isset(btnIniciarNuevaVenta)) then (False)
+      :Mostrar panel <Error> "Acceso no permitido";
+      stop
+    else (TRUE)
+      :Verificar si hay cliente seleccionado en pantalla;
+      if (¿Hay cliente seleccionado?) then (NO)
+        :Mostrar panel <Confirmación> "No se ha seleccionado cliente.\nSe emitirá una Boleta a Público General.\n¿Está seguro?";
+        if (Clic en ..) then (boton <Cancelar>)
+          :Redireccionar al panel <Selección de Cliente>;
+          stop
+        else (boton <Aceptar>)
+          :Validar btnAceptar;
+          if (isset(btnAceptar)) then (False)
+            :Mostrar panel <Error> "Acceso no permitido";
+            stop
+          else (TRUE)
+            :Asignar cliente temporal id_cliente = 0 (Público General);
+          endif
+        endif
+      else (SI)
+      endif
+      :Consultar en la BD los productos activos con stock disponible;
+      :Mostrar ventana <Catálogo de Productos y Carrito> con buscador izquierdo y carrito derecho vacío;
+
+      switch (Clic en ....)
+      case (boton <Buscar Ítem>)
+        :Sanitizar texto de búsqueda;
+        :Consultar en la BD productos por nombre, código o categoría;
+        note right: SELECT * FROM Producto WHERE estado='Activo' AND (nombre LIKE '%?%' OR codigo = ? OR categoria LIKE '%?%')
+        :Mostrar resultados actualizados en la grilla del catálogo;
+        stop
+
+      case (boton <Agregar al Carrito>)
+        :Validar btnAgregarCarrito;
+        if (isset(btnAgregarCarrito)) then (False)
+          :Mostrar panel <Error> "Acceso no permitido";
+          stop
+        else (TRUE)
+          :Capturar producto seleccionado y sanitizar cantidad ingresada;
+          :Verificar cantidad contra el stock físico en BD;
+          if (¿Cantidad > 0 y <= stock_fisico_bd?) then (NO)
+            :Mostrar panel <Error> "Stock inválido o insuficiente para la cantidad solicitada";
+            stop
+          else (SI)
+            :Añadir ítem al arreglo temporal en Sesión;
+            :Calcular subtotal del ítem (precio x cantidad);
+            :Recalcular IGV y Total General del carrito;
+            :Mostrar ítem actualizado en la grilla del carrito con totales;
+            stop
+          endif
+        endif
+
+      case (boton <Eliminar Ítem del Carrito>)
+        :Validar btnEliminarItem;
+        if (isset(btnEliminarItem)) then (False)
+          :Mostrar panel <Error> "Acceso no permitido";
+          stop
+        else (TRUE)
+          :Eliminar ítem del arreglo temporal en Sesión;
+          :Recalcular IGV y Total General del carrito;
+          :Actualizar grilla del carrito en pantalla;
+          stop
+        endif
+
+      case (boton <Procesar Venta>)
+        :Validar btnProcesarVenta;
+        if (isset(btnProcesarVenta)) then (False)
+          :Mostrar panel <Error> "Acceso no permitido";
+          stop
+        else (TRUE)
+          :Verificar si el carrito tiene ítems registrados;
+          if (¿Carrito está vacío?) then (SI)
+            :Mostrar panel <Error> "Debe agregar productos al carrito";
+            stop
+          else (NO)
+            :Capturar tipo de comprobante seleccionado en la ventana;
+            :Verificar que se haya asociado un cliente válido para emitir Factura;
+            if (¿Comprobante == Factura y id_cliente == 0?) then (SI)
+              :Mostrar panel <Error> "Para emitir FACTURA debe elegir un cliente registrado. Vuelva a Selección de Cliente.";
+              stop
+            else (NO)
+              :Mostrar formulario <Cobro Final> con resumen de la venta;
+              if (Clic en ..) then (boton <Cancelar>)
+                :Limpiar arreglo temporal en Sesión;
+                :Redireccionar al panel <Selección de Cliente>;
+                stop
+              else (boton <Confirmar Transacción>)
+                :Validar btnConfirmarTransaccion;
+                if (isset(btnConfirmarTransaccion)) then (False)
+                  :Mostrar panel <Error> "Acceso no permitido";
+                  stop
+                else (TRUE)
+                  :Capturar método de pago y sanitizar monto ingresado;
+                  :Verificar si el monto cubre el Total General;
+                  if (¿Monto Ingresado < Total General?) then (SI, Crear Reserva)
+                    :Calcular saldo pendiente = Total General - Monto Ingresado;
+                    :Registrar en la BD la cabecera de la venta con estado Reservada;
+                    note right: INSERT INTO Venta (id_cliente, total, adelanto, saldo, tipo_comprobante, estado, fecha) VALUES (?, ?, ?, ?, ?, 'Reservada', NOW())
+                    :Registrar en la BD el detalle de los ítems del carrito;
+                    note right: INSERT INTO Detalle_Venta (id_venta, id_prod, cantidad, precio_unitario, subtotal) VALUES (?, ?, ?, ?, ?)
+                    :Bloquear en la BD el stock de cada ítem vendido;
+                    note right: UPDATE Producto SET stock_separado = stock_separado + ? WHERE id_prod = ?
+                    :Mostrar panel <Éxito> "Reserva registrada con éxito";
+                    stop
+                  else (NO, Venta Total)
+                    :Registrar en la BD el pago según el método seleccionado;
+                    :Generar correlativo del comprobante;
+                    note right: SELECT MAX(num_comprobante)+1 FROM Venta WHERE tipo = ?
+                    :Registrar en la BD la cabecera de la venta con estado Completada;
+                    note right: INSERT INTO Venta (id_cliente, num_comprobante, total, adelanto, saldo, tipo_comprobante, estado, fecha) VALUES (?, ?, ?, ?, 0, ?, 'Completada', NOW())
+                    :Registrar en la BD el detalle de los ítems del carrito;
+                    note right: INSERT INTO Detalle_Venta (id_venta, id_prod, cantidad, precio_unitario, subtotal) VALUES (?, ?, ?, ?, ?)
+                    :Descontar en la BD el stock físico de cada ítem vendido;
+                    note right: UPDATE Producto SET stock_fisico = stock_fisico - ? WHERE id_prod = ?
+                    :Generar Comprobante PDF (Boleta/Factura);
+                    :Mostrar panel <Éxito> "Venta registrada. Comprobante generado";
+                    stop
+                  endif
+                endif
+              endif
+            endif
+          endif
+        endif
+      endswitch
+    endif
+  endswitch
+endif
+
+@enduml

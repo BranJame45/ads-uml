@@ -1,0 +1,153 @@
+@startuml
+scale 0.7
+skinparam ActivityBackgroundColor #FFFFE0
+skinparam ActivityBorderColor #8B0000
+skinparam ArrowColor #8B0000
+skinparam PartitionBorderColor #000000
+skinparam shadowing false
+skinparam DefaultFontName Arial
+
+title Diagrama de Actividades - UC08: Gestionar Proveedores
+
+|Encargado de Almacén|
+start
+:Dar clic en el botón "Gestionar Proveedores" del Panel Principal;
+
+|Sistema|
+:Validar btnGestionarProveedores;
+if (isset(btnGestionarProveedores)) then (False)
+  :Mostrar panel <Error> "Acceso no permitido";
+  stop
+else (TRUE)
+  :Consultar en la BD la lista de proveedores activos;
+  note right: SELECT id_prov, razon_social, ruc, telefono, correo FROM Proveedor WHERE estado = 'Activo' ORDER BY razon_social
+  :Mostrar ventana <Gestión de Proveedores> con grilla de resultados, buscador y botón [Nuevo Proveedor];
+
+  switch (Clic en ....)
+  case (boton <Buscar>)
+    :Sanitizar texto de búsqueda;
+    :Verificar si el campo tiene contenido;
+    if (¿Campo vacío?) then (SI)
+      :Mostrar panel <Error> "Debe ingresar una razón social o RUC para buscar";
+      stop
+    else (NO)
+      :Consultar en la BD proveedores activos filtrados por razón social o RUC;
+      note right: SELECT id_prov, razon_social, ruc, telefono, correo FROM Proveedor WHERE estado = 'Activo' AND (razon_social LIKE '%?%' OR ruc = ?)
+      :Actualizar grilla con los resultados de la búsqueda;
+      stop
+    endif
+
+  case (boton <Nuevo Proveedor>)
+    :Validar btnNuevoProveedor;
+    if (isset(btnNuevoProveedor)) then (False)
+      :Mostrar panel <Error> "Acceso no permitido";
+      stop
+    else (TRUE)
+      :Mostrar modal <Formulario de Proveedor> vacío con el campo RUC editable;
+      if (Clic en ...) then (boton <Cancelar>)
+        :Cerrar modal y mantener vista actual;
+        stop
+      else (boton <Guardar Nuevo>)
+        :Validar btnGuardarNuevo;
+        if (isset(btnGuardarNuevo)) then (False)
+          :Mostrar panel <Error> "Acceso no permitido";
+          stop
+        else (TRUE)
+          :Sanitizar datos del formulario;
+          :Validar que los campos obligatorios no estén vacíos;
+          if (¿Campos incompletos?) then (SI)
+            :Mostrar panel <Error> "La razón social, RUC, teléfono, correo y dirección son obligatorios";
+            stop
+          else (NO)
+            :Consultar en la BD si ya existe un proveedor con ese RUC;
+            note right: SELECT id_prov FROM Proveedor WHERE ruc = ?
+            if (¿RUC ya registrado?) then (SI)
+              :Mostrar panel <Error> "Ya existe un proveedor registrado con ese RUC";
+              stop
+            else (NO)
+              :Registrar en la BD el nuevo proveedor;
+              note right: INSERT INTO Proveedor (razon_social, ruc, telefono, correo, direccion, estado) VALUES (?, ?, ?, ?, ?, 'Activo')
+              :Mostrar panel <Éxito> "Proveedor registrado correctamente";
+              stop
+            endif
+          endif
+        endif
+      endif
+    endif
+
+  case (boton <Editar Proveedor>)
+    :Validar btnEditarProveedor;
+    if (isset(btnEditarProveedor)) then (False)
+      :Mostrar panel <Error> "Acceso no permitido";
+      stop
+    else (TRUE)
+      :Sanitizar ID del proveedor recibido;
+      :Consultar en la BD el proveedor y sus datos;
+      note right: SELECT id_prov, razon_social, ruc, telefono, correo, direccion FROM Proveedor WHERE id_prov = ?
+      if (¿Existe proveedor?) then (NO)
+        :Mostrar panel <Error> "El proveedor solicitado no existe";
+        stop
+      else (SI)
+        :Cargar en variables los datos obtenidos del proveedor;
+        :Mostrar modal <Formulario de Proveedor> con datos precargados y RUC en sólo lectura;
+        if (Clic en ...) then (boton <Cancelar>)
+          :Cerrar modal y mantener vista actual;
+          stop
+        else (boton <Guardar Cambios>)
+          :Validar btnGuardarCambios;
+          if (isset(btnGuardarCambios)) then (False)
+            :Mostrar panel <Error> "Acceso no permitido";
+            stop
+          else (TRUE)
+            :Sanitizar datos del formulario;
+            :Validar que los campos obligatorios no estén vacíos;
+            if (¿Campos obligatorios incompletos?) then (SI)
+              :Mostrar panel <Error> "La razón social, teléfono, correo y dirección son obligatorios";
+              stop
+            else (NO)
+              :Actualizar datos del proveedor en la BD (el RUC no se modifica, es el identificador);
+              note right: UPDATE Proveedor SET razon_social = ?, telefono = ?, correo = ?, direccion = ? WHERE id_prov = ?
+              :Mostrar panel <Éxito> "Datos del proveedor actualizados correctamente";
+              stop
+            endif
+          endif
+        endif
+      endif
+    endif
+
+  case (boton <Eliminar Proveedor>)
+    :Validar btnEliminarProveedor;
+    if (isset(btnEliminarProveedor)) then (False)
+      :Mostrar panel <Error> "Acceso no permitido";
+      stop
+    else (TRUE)
+      :Sanitizar ID del proveedor recibido;
+      :Mostrar panel <Confirmación> "¿Está seguro de eliminar este proveedor?";
+      if (Clic en ..) then (boton <Cancelar>)
+        :Cerrar confirmación y mantener vista actual;
+        stop
+      else (boton <Aceptar>)
+        :Validar btnAceptar;
+        if (isset(btnAceptar)) then (False)
+          :Mostrar panel <Error> "Acceso no permitido";
+          stop
+        else (TRUE)
+          :Verificar en BD si el proveedor existe y está activo;
+          note right: SELECT id_prov FROM Proveedor WHERE id_prov = ? AND estado = 'Activo'
+          if (¿Existe proveedor?) then (NO)
+            :Mostrar panel <Error> "El proveedor solicitado no existe";
+            stop
+          else (SI)
+            :Actualizar en la BD el estado del proveedor a 'Inactivo';
+            note right: UPDATE Proveedor SET estado = 'Inactivo' WHERE id_prov = ?
+            :Mostrar panel <Éxito> "Proveedor eliminado (inhabilitado) correctamente";
+            stop
+          endif
+        endif
+      endif
+    endif
+
+  endswitch
+endif
+
+@enduml
