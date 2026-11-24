@@ -1,0 +1,311 @@
+@startuml
+!pragma teoz true
+skinparam sequenceArrowColor #8B0000
+skinparam sequenceLifeLineBorderColor #8B0000
+skinparam sequenceParticipantBorderColor #8B0000
+skinparam sequenceParticipantBackgroundColor #FFFFE0
+skinparam sequenceActorBorderColor #8B0000
+skinparam sequenceGroupBorderColor #8B0000
+skinparam shadowing false
+skinparam DefaultFontName Arial
+
+title DS_Gestionar Clientes (UC05)
+
+actor "Vendedor" as vendedor
+boundary "CI_VentanaGestionarCliente" as b_ventana
+boundary "CI_FormularioCliente" as b_form
+boundary "CI_ModalHistorialCliente" as b_historial
+boundary "CI_MensajeConfirmacion" as b_confirm
+boundary "CI_MensajeSistema" as b_msg
+control "CC_GestionarClienteController" as ctrl
+entity "CE_cliente" as e_cliente
+entity "CE_venta" as e_venta
+
+' =================== ARRANQUE (DIRECTO ACTOR -> CONTROLADOR) ===================
+vendedor -> ctrl : validarBtnGestionarClientes(btnGestionarClientes: String): bool
+activate ctrl
+
+ctrl -> ctrl : validarBoton(btnGestionarClientes: String): bool
+
+break si validarBoton() == false
+  ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+  b_msg --> vendedor : [Error] Acceso no permitido
+end
+
+ctrl -> ctrl : validarRolVendedor(rolUsuario: String): bool
+
+break si validarRolVendedor() == false
+  ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+  b_msg --> vendedor : [Error] Privilegios insuficientes
+end
+
+ctrl -> e_cliente : obtenerClientesActivos(): List
+activate e_cliente
+e_cliente --> ctrl : listadoClientes
+deactivate e_cliente
+
+ctrl -> b_ventana : CI_VentanaGestionarClienteShow(listadoClientes: List)
+activate b_ventana
+b_ventana --> vendedor : Muestra VentanaGestionarCliente con listado
+
+' =================== RAMA BUSCAR ===================
+group BUSCAR CLIENTE
+  vendedor -> b_ventana : clickBuscar(txtBuscador: String, btnBuscar: String)
+  b_ventana -> ctrl : buscarClientes(textoBusqueda: String): void
+
+  ctrl -> ctrl : validarCampoBusqueda(textoBusqueda: String): bool
+
+  break si validarCampoBusqueda() == false
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> vendedor : [Error] Debe ingresar un documento o nombre para buscar
+  end
+
+  ctrl -> e_cliente : obtenerClientesFiltrados(textoBusqueda: String): List
+  activate e_cliente
+  e_cliente --> ctrl : listadoFiltrado
+  deactivate e_cliente
+
+  ctrl -> b_ventana : CI_VentanaGestionarClienteShow(listadoFiltrado: List)
+  b_ventana --> vendedor : Actualiza grilla con los resultados
+end
+
+' =================== RAMA AGREGAR ===================
+group AGREGAR CLIENTE
+  vendedor -> b_ventana : clickNuevoCliente(btnNuevoCliente: String)
+  b_ventana -> ctrl : validarBtnNuevoCliente(btnNuevoCliente: String): bool
+
+  ctrl -> ctrl : validarBoton(btnNuevoCliente: String): bool
+
+  break si validarBoton() == false
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> vendedor : [Error] Acceso no permitido
+  end
+
+  ctrl -> b_form : CI_FormularioClienteShow()
+  activate b_form
+  b_form --> vendedor : Muestra FormularioCliente vacío
+
+  alt el usuario presiona btnCancelar
+    vendedor -> b_form : clickCancelar(btnCancelar: String)
+    b_form --> vendedor : Cerrar modal y mantener vista actual
+  else el usuario presiona btnGuardarNuevo
+    vendedor -> b_form : ingresarDatos(tipo_documento: String, documento: String, nombre: String, telefono: String, correo: String, direccion: String, btnGuardarNuevo: String)
+    b_form -> ctrl : validarBtnGuardarNuevo(btnGuardarNuevo: String): bool
+
+    ctrl -> ctrl : validarBoton(btnGuardarNuevo: String): bool
+
+    break si validarBoton() == false
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> vendedor : [Error] Acceso no permitido
+    end
+
+    ctrl -> ctrl : validarCampos(tipo_documento: String, documento: String, nombre: String): int
+
+    break si validarCampos() == 0
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> vendedor : [Error] El tipo de documento, número de documento y nombre son obligatorios
+    end
+
+    ctrl -> ctrl : validarFormatoDocumento(tipo_documento: String, documento: String): bool
+
+    break si validarFormatoDocumento() == false
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> vendedor : [Error] El DNI debe tener 8 dígitos o el RUC 11 dígitos
+    end
+
+    ctrl -> e_cliente : verificarDocumentoDuplicado(documento: String): int
+    activate e_cliente
+    e_cliente --> ctrl : resultado
+    deactivate e_cliente
+
+    break Si resultado != 0
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> vendedor : [Error] Ya existe un cliente registrado con ese número de documento
+    end
+
+    ctrl -> e_cliente : registrarCliente(tipo_documento: String, documento: String, nombre: String, telefono: String, correo: String, direccion: String): int
+    activate e_cliente
+    e_cliente --> ctrl : id_cliente
+    deactivate e_cliente
+
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> vendedor : [Éxito] Cliente registrado correctamente
+
+    ctrl -> e_cliente : obtenerClientesActivos(): List
+    activate e_cliente
+    e_cliente --> ctrl : listadoClientes
+    deactivate e_cliente
+
+    ctrl -> b_ventana : CI_VentanaGestionarClienteShow(listadoClientes: List)
+    b_ventana --> vendedor : Muestra VentanaGestionarCliente
+  end
+
+  deactivate b_form
+end
+
+' =================== RAMA EDITAR ===================
+group EDITAR CLIENTE
+  vendedor -> b_ventana : clickEditarCliente(btnEditarCliente: String, id_cliente: int)
+  b_ventana -> ctrl : validarBtnEditarCliente(btnEditarCliente: String): bool
+
+  ctrl -> ctrl : validarBoton(btnEditarCliente: String): bool
+
+  break si validarBoton() == false
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> vendedor : [Error] Acceso no permitido
+  end
+
+  ctrl -> e_cliente : obtenerDatosCliente(id_cliente: int): Object
+  activate e_cliente
+  e_cliente --> ctrl : datosCliente
+  deactivate e_cliente
+
+  break si datosCliente es null
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> vendedor : [Error] El cliente solicitado no existe
+  end
+
+  ctrl -> b_form : CI_FormularioClienteShow(datosCliente: Object)
+  activate b_form
+  b_form --> vendedor : Muestra FormularioCliente con datos cargados (documento sólo lectura)
+
+  alt el usuario presiona btnCancelar
+    vendedor -> b_form : clickCancelar(btnCancelar: String)
+    b_form --> vendedor : Cerrar modal y mantener vista actual
+  else el usuario presiona btnGuardarCambios
+    vendedor -> b_form : modificarDatos(nombre: String, telefono: String, correo: String, direccion: String, btnGuardarCambios: String)
+    b_form -> ctrl : validarBtnGuardarCambios(btnGuardarCambios: String): bool
+
+    ctrl -> ctrl : validarBoton(btnGuardarCambios: String): bool
+
+    break si validarBoton() == false
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> vendedor : [Error] Acceso no permitido
+    end
+
+    ctrl -> ctrl : validarCamposEdicion(nombre: String): int
+
+    break si validarCamposEdicion() == 0
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> vendedor : [Error] El nombre o razón social es obligatorio
+    end
+
+    ctrl -> e_cliente : actualizarCliente(id_cliente: int, nombre: String, telefono: String, correo: String, direccion: String): bool
+    activate e_cliente
+    e_cliente --> ctrl : confirmacion
+    deactivate e_cliente
+
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> vendedor : [Éxito] Datos del cliente actualizados correctamente
+
+    ctrl -> e_cliente : obtenerClientesActivos(): List
+    activate e_cliente
+    e_cliente --> ctrl : listadoClientes
+    deactivate e_cliente
+
+    ctrl -> b_ventana : CI_VentanaGestionarClienteShow(listadoClientes: List)
+    b_ventana --> vendedor : Muestra VentanaGestionarCliente
+  end
+
+  deactivate b_form
+end
+
+' =================== RAMA ELIMINAR ===================
+group ELIMINAR CLIENTE
+  vendedor -> b_ventana : clickEliminarCliente(btnEliminarCliente: String, id_cliente: int)
+  b_ventana -> ctrl : validarBtnEliminarCliente(btnEliminarCliente: String): bool
+
+  ctrl -> ctrl : validarBoton(btnEliminarCliente: String): bool
+
+  break si validarBoton() == false
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> vendedor : [Error] Acceso no permitido
+  end
+
+  ctrl -> b_confirm : CI_MensajeConfirmacionShow(msg: String)
+  activate b_confirm
+  b_confirm --> vendedor : Muestra MensajeConfirmacion (btnAceptar, btnCancelar)
+
+  alt el usuario presiona btnCancelar
+    vendedor -> b_confirm : clickCancelar(btnCancelar: String)
+    b_confirm --> vendedor : Cerrar confirmación y mantener vista actual
+    deactivate b_confirm
+  else el usuario presiona btnAceptar
+    vendedor -> b_confirm : clickAceptar(btnAceptar: String)
+    b_confirm -> ctrl : validarBtnAceptar(btnAceptar: String): bool
+    deactivate b_confirm
+
+    ctrl -> ctrl : validarBoton(btnAceptar: String): bool
+
+    break si validarBoton() == false
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> vendedor : [Error] Acceso no permitido
+    end
+
+    ctrl -> e_cliente : verificarExistenciaActiva(id_cliente: int): int
+    activate e_cliente
+    e_cliente --> ctrl : resultado
+    deactivate e_cliente
+
+    break si resultado == 0
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> vendedor : [Error] El cliente solicitado no existe
+    end
+
+    ctrl -> e_venta : contarVentasCliente(id_cliente: int): int
+    activate e_venta
+    e_venta --> ctrl : totalVentas
+    deactivate e_venta
+
+    break si totalVentas > 0
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> vendedor : [Error] No se puede eliminar el cliente porque tiene ventas asociadas
+    end
+
+    ctrl -> e_cliente : desactivarCliente(id_cliente: int): bool
+    activate e_cliente
+    e_cliente --> ctrl : confirmacion
+    deactivate e_cliente
+
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> vendedor : [Éxito] Cliente eliminado correctamente
+
+    ctrl -> e_cliente : obtenerClientesActivos(): List
+    activate e_cliente
+    e_cliente --> ctrl : listadoClientes
+    deactivate e_cliente
+
+    ctrl -> b_ventana : CI_VentanaGestionarClienteShow(listadoClientes: List)
+    b_ventana --> vendedor : Muestra VentanaGestionarCliente
+  end
+end
+
+' =================== RAMA VER HISTORIAL ===================
+group VER HISTORIAL DE COMPRAS
+  vendedor -> b_ventana : clickHistorialCliente(btnHistorialCliente: String, id_cliente: int)
+  b_ventana -> ctrl : validarBtnHistorialCliente(btnHistorialCliente: String): bool
+
+  ctrl -> ctrl : validarBoton(btnHistorialCliente: String): bool
+
+  break si validarBoton() == false
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> vendedor : [Error] Acceso no permitido
+  end
+
+  ctrl -> e_venta : obtenerHistorialCliente(id_cliente: int): List
+  activate e_venta
+  e_venta --> ctrl : historialCompras
+  deactivate e_venta
+
+  ctrl -> b_historial : CI_ModalHistorialClienteShow(historialCompras: List)
+  activate b_historial
+  b_historial --> vendedor : Muestra ModalHistorialCliente con las ventas del cliente
+  vendedor -> b_historial : clickCerrar(btnCerrar: String)
+  b_historial --> vendedor : Cierra modal de historial
+  deactivate b_historial
+end
+
+deactivate b_ventana
+deactivate ctrl
+
+@enduml

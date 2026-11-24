@@ -1,0 +1,56 @@
+@startuml
+scale 0.7
+skinparam ActivityBackgroundColor #FFFFE0
+skinparam ActivityBorderColor #8B0000
+skinparam ArrowColor #8B0000
+skinparam PartitionBorderColor #000000
+skinparam shadowing false
+skinparam DefaultFontName Arial
+
+title Diagrama de Actividades - UC01: Autenticar Usuario
+
+|Usuario|
+start
+:Colocar URL del sistema en el navegador web;
+
+|Sistema|
+:Mostrar ventana <Iniciar Sesión> con campos usuario, contraseña y botón [Ingresar];
+:Validar btnIngresar;
+if (isset(btnIngresar)) then (False)
+  :Mostrar panel <Error> "Acceso no permitido";
+  stop
+else (TRUE)
+  :Sanitizar username y password ingresados;
+  :Validar que los campos usuario y contraseña no estén vacíos;
+  if (¿Campos vacíos?) then (SI)
+    :Mostrar panel <Error> "Debe ingresar su usuario y contraseña";
+    stop
+  else (NO)
+    :Consultar en la BD los datos del usuario por username;
+    note right: SELECT id_usu, nombre_completo, username, password, estado FROM Usuario WHERE username = ?
+    if (¿Existe usuario?) then (NO)
+      :Mostrar panel <Error> "El usuario ingresado no existe";
+      stop
+    else (SI)
+      :Verificar si la contraseña ingresada coincide con la registrada;
+      if (¿Contraseña correcta?) then (NO)
+        :Mostrar panel <Error> "Contraseña incorrecta";
+        stop
+      else (SI)
+        :Verificar si el usuario se encuentra activo;
+        if (¿Estado == 'Activo'?) then (NO)
+          :Mostrar panel <Error> "El usuario se encuentra inactivo";
+          stop
+        else (SI)
+          :Consultar en la BD el rol asignado al usuario;
+          note right: SELECT r.id_rol, r.nombre_rol FROM Usuario_Rol ur INNER JOIN Rol r ON ur.id_rol = r.id_rol WHERE ur.id_usu = ?
+          :Cargar en sesión los datos del usuario y sus permisos de rol;
+          :Redirigir al usuario al <Panel Principal> correspondiente a su rol;
+          stop
+        endif
+      endif
+    endif
+  endif
+endif
+
+@enduml

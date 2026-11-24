@@ -1,0 +1,100 @@
+@startuml
+scale 0.6
+skinparam ActivityBackgroundColor #FFFFE0
+skinparam ActivityBorderColor #8B0000
+skinparam ArrowColor #8B0000
+skinparam PartitionBorderColor #000000
+skinparam shadowing false
+skinparam DefaultFontName Arial
+
+title Diagrama de Actividades - UC07: Atender Reclamo y Devolución
+
+|Vendedor|
+start
+:Dar clic en el botón "Atender Reclamo y Devolución" del Panel Principal;
+
+|Sistema|
+:Validar btnAtenderReclamo;
+if (isset(btnAtenderReclamo)) then (False)
+  :Mostrar panel <Error> "Acceso no permitido";
+  stop
+else (TRUE)
+  :Mostrar ventana <Atender Reclamo y Devolución> con buscador de comprobante vacío;
+
+  switch (Clic en ....)
+  case (boton <Buscar Venta>)
+    :Sanitizar número de comprobante ingresado;
+    :Verificar si el campo de búsqueda tiene contenido;
+    if (¿Campo vacío?) then (SI)
+      :Mostrar panel <Error> "Debe ingresar un número de comprobante para buscar";
+      stop
+    else (NO)
+      :Consultar en la BD la venta completada por número de comprobante;
+      note right: SELECT v.id_venta, v.fecha, v.num_comprobante, v.total, c.nombre AS cliente FROM Venta v LEFT JOIN Cliente c ON v.id_cliente = c.id_cliente WHERE v.num_comprobante = ? AND v.estado = 'Completada'
+      if (¿Existe venta?) then (NO)
+        :Mostrar panel <Aviso> "No se encontró una venta completada con ese comprobante";
+        stop
+      else (SI)
+        :Consultar en la BD el detalle de productos de la venta;
+        note right: SELECT dv.id_prod, p.nombre, dv.cantidad, dv.precio_unitario, dv.subtotal FROM Detalle_Venta dv INNER JOIN Producto p ON dv.id_prod = p.id_prod WHERE dv.id_venta = ?
+        :Mostrar en pantalla los datos de la venta y el detalle de productos;
+        stop
+      endif
+    endif
+
+  case (boton <Registrar Reclamo>)
+    :Validar btnRegistrarReclamo;
+    if (isset(btnRegistrarReclamo)) then (False)
+      :Mostrar panel <Error> "Acceso no permitido";
+      stop
+    else (TRUE)
+      :Verificar que exista una venta seleccionada en pantalla;
+      if (¿Venta seleccionada?) then (NO)
+        :Mostrar panel <Error> "Debe buscar y seleccionar una venta primero";
+        stop
+      else (SI)
+        :Mostrar modal <Formulario de Reclamo> con los productos de la venta;
+        if (Clic en ..) then (boton <Cancelar>)
+          :Cerrar modal sin registrar cambios;
+          stop
+        else (boton <Confirmar Reclamo>)
+          :Validar btnConfirmarReclamo;
+          if (isset(btnConfirmarReclamo)) then (False)
+            :Mostrar panel <Error> "Acceso no permitido";
+            stop
+          else (TRUE)
+            :Sanitizar producto, cantidad, motivo y tipo de resolución;
+            :Validar que los campos obligatorios no estén vacíos;
+            if (¿Campos vacíos?) then (SI)
+              :Mostrar panel <Error> "Debe seleccionar producto, ingresar cantidad, motivo y tipo de resolución";
+              stop
+            else (NO)
+              :Validar que la cantidad sea mayor a 0 y no supere la cantidad vendida;
+              if (¿Cantidad válida?) then (NO)
+                :Mostrar panel <Error> "La cantidad debe ser mayor a cero y no superar lo vendido";
+                stop
+              else (SI)
+                :Calcular monto devuelto si la resolución es 'Devolución de dinero' (sino 0);
+                :Registrar en la BD el reclamo y su resolución (incluyendo egreso de caja si aplica);
+                note right: INSERT INTO Reclamo (id_venta, id_prod, id_usuario, motivo, cantidad, fecha, tipo_resolucion, monto_devuelto, estado) VALUES (?, ?, ?, ?, ?, NOW(), ?, ?, 'Atendido')
+                :Devolver al stock físico el producto retornado por el cliente;
+                note right: UPDATE Producto SET stock_fisico = stock_fisico + ? WHERE id_prod = ?
+                if (¿Resolución == 'Cambio de producto'?) then (SI)
+                  :Descontar del stock físico el producto entregado en reemplazo;
+                  note right: UPDATE Producto SET stock_fisico = stock_fisico - ? WHERE id_prod = ?
+                else (NO)
+                  :Mantener ajuste por devolución de dinero;
+                endif
+                :Mostrar panel <Éxito> "Reclamo y devolución registrados correctamente";
+                stop
+              endif
+            endif
+          endif
+        endif
+      endif
+    endif
+
+  endswitch
+endif
+
+@enduml

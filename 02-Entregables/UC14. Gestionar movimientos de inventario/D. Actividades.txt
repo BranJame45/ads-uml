@@ -1,0 +1,104 @@
+@startuml
+scale 0.5
+skinparam ActivityBackgroundColor #FFFFE0
+skinparam ActivityBorderColor #8B0000
+skinparam ArrowColor #8B0000
+skinparam PartitionBorderColor #000000
+skinparam shadowing false
+skinparam DefaultFontName Arial
+
+title Diagrama de Actividades - UC14: Gestionar Movimientos de Inventario
+
+|Encargado de Almacén|
+start
+:Dar clic en el botón "Gestionar Movimientos de Inventario" del Panel Principal;
+
+|Sistema|
+:Validar btnGestionarMovimientos;
+if (isset(btnGestionarMovimientos)) then (False)
+  :Mostrar panel <Error> "Acceso no permitido";
+  stop
+else (TRUE)
+  :Consultar en la BD todos los movimientos de inventario en orden cronológico descendente;
+  note right: SELECT m.id_movimiento, m.fecha, m.tipo_movimiento, m.referencia_origen, p.nombre AS item, m.cantidad, m.stock_resultante, m.estado FROM Movimiento_Inventario m INNER JOIN Producto p ON m.id_prod = p.id_prod ORDER BY m.fecha DESC
+  :Mostrar ventana <Gestión de Movimientos de Inventario> con filtros y grilla;
+
+  switch (Clic en ....)
+  case (boton <Filtrar>)
+    :Sanitizar filtros (tipo, ítem, fecha inicio, fecha fin);
+    :Consultar en la BD movimientos filtrados;
+    note right: SELECT m.id_movimiento, m.fecha, m.tipo_movimiento, m.referencia_origen, p.nombre AS item, m.cantidad, m.stock_resultante, m.estado FROM Movimiento_Inventario m INNER JOIN Producto p ON m.id_prod = p.id_prod WHERE (? = '' OR m.tipo_movimiento = ?) AND (? = '' OR p.nombre LIKE '%?%') AND (? = '' OR DATE(m.fecha) BETWEEN ? AND ?) ORDER BY m.fecha DESC
+    :Actualizar grilla con los resultados filtrados;
+    stop
+
+  case (boton <Ver Detalle>)
+    :Validar btnVerDetalle;
+    if (isset(btnVerDetalle)) then (False)
+      :Mostrar panel <Error> "Acceso no permitido";
+      stop
+    else (TRUE)
+      :Sanitizar ID del movimiento;
+      :Consultar en la BD el detalle del movimiento seleccionado;
+      note right: SELECT m.*, p.nombre AS item, p.stock_fisico, u.nombre_completo AS usuario FROM Movimiento_Inventario m INNER JOIN Producto p ON m.id_prod = p.id_prod INNER JOIN Usuario u ON m.id_usuario = u.id_usu WHERE m.id_movimiento = ?
+      if (¿Existe movimiento?) then (NO)
+        :Mostrar panel <Error> "El movimiento solicitado no existe";
+        stop
+      else (SI)
+        :Consultar en la BD el Kardex completo del ítem;
+        note right: SELECT fecha, tipo_movimiento, cantidad, stock_resultante, estado FROM Movimiento_Inventario WHERE id_prod = ? ORDER BY fecha DESC
+        :Mostrar modal <Detalle y Kardex> con el detalle y el stock actual en función a sus movimientos;
+        :Cerrar modal al presionar [Cerrar];
+        stop
+      endif
+    endif
+
+  case (boton <Anular Movimiento>)
+    :Validar btnAnularMovimiento;
+    if (isset(btnAnularMovimiento)) then (False)
+      :Mostrar panel <Error> "Acceso no permitido";
+      stop
+    else (TRUE)
+      :Sanitizar ID del movimiento;
+      :Consultar en la BD si el movimiento existe y está activo;
+      note right: SELECT id_movimiento, id_prod, tipo_movimiento, cantidad, estado FROM Movimiento_Inventario WHERE id_movimiento = ? AND estado = 'Activo'
+      if (¿Movimiento activo?) then (NO)
+        :Mostrar panel <Error> "El movimiento no existe o ya se encuentra anulado";
+        stop
+      else (SI)
+        :Mostrar modal <Anular Movimiento> solicitando el motivo de anulación;
+        if (Clic en ..) then (boton <Cancelar>)
+          :Cerrar modal sin realizar cambios;
+          stop
+        else (boton <Confirmar Anulación>)
+          :Validar btnConfirmarAnulacion;
+          if (isset(btnConfirmarAnulacion)) then (False)
+            :Mostrar panel <Error> "Acceso no permitido";
+            stop
+          else (TRUE)
+            :Sanitizar motivo de anulación;
+            if (¿Motivo vacío?) then (SI)
+              :Mostrar panel <Error> "Debe ingresar el motivo de la anulación";
+              stop
+            else (NO)
+              :Verificar el tipo de movimiento para revertir su efecto en stock;
+              if (¿Es movimiento de Entrada?) then (SI)
+                :Descontar del stock físico la cantidad del movimiento anulado;
+                note right: UPDATE Producto SET stock_fisico = stock_fisico - ? WHERE id_prod = ?
+              else (NO)
+                :Devolver al stock físico la cantidad del movimiento anulado;
+                note right: UPDATE Producto SET stock_fisico = stock_fisico + ? WHERE id_prod = ?
+              endif
+              :Registrar anulación en la BD con usuario, fecha y motivo;
+              note right: UPDATE Movimiento_Inventario SET estado = 'Anulado', motivo_anulacion = CONCAT(?, ' (Anulado por usuario ', ?, ' el ', NOW(), ')') WHERE id_movimiento = ?
+              :Mostrar panel <Éxito> "Movimiento anulado y stock revertido correctamente";
+              stop
+            endif
+          endif
+        endif
+      endif
+    endif
+
+  endswitch
+endif
+
+@enduml

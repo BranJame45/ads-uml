@@ -1,0 +1,115 @@
+@startuml
+scale 0.5
+skinparam ActivityBackgroundColor #FFFFE0
+skinparam ActivityBorderColor #8B0000
+skinparam ArrowColor #8B0000
+skinparam PartitionBorderColor #000000
+skinparam shadowing false
+skinparam DefaultFontName Arial
+
+title Diagrama de Actividades - UC11: Registrar Ingreso de Mercancía
+
+|Encargado de Almacén|
+start
+:Dar clic en el botón "Registrar Ingreso de Mercancía" del Panel Principal;
+
+|Sistema|
+:Validar btnRegistrarIngreso;
+if (isset(btnRegistrarIngreso)) then (False)
+  :Mostrar panel <Error> "Acceso no permitido";
+  stop
+else (TRUE)
+  :Consultar en la BD el historial de ingresos de mercancía;
+  note right: SELECT i.id_ingreso, i.num_ingreso, i.fecha, p.razon_social, i.num_comprobante_prov, i.costo_total FROM Ingreso_Mercancia i INNER JOIN Proveedor p ON i.id_prov = p.id_prov ORDER BY i.fecha DESC
+  :Mostrar ventana <Gestión de Ingresos de Mercancía> con historial y botón [Nuevo Ingreso];
+
+  switch (Clic en ....)
+  case (boton <Nuevo Ingreso>)
+    :Validar btnNuevoIngreso;
+    if (isset(btnNuevoIngreso)) then (False)
+      :Mostrar panel <Error> "Acceso no permitido";
+      stop
+    else (TRUE)
+      :Consultar en la BD los insumos y productos activos;
+      note right: SELECT id_prod, nombre, tipo, costo_unitario FROM Producto WHERE estado = 'Activo' ORDER BY nombre
+      :Mostrar modal <Formulario de Ingreso> vacío con listado de ítems;
+
+      switch (Clic en ....)
+      case (boton <Buscar Proveedor>)
+        :Sanitizar texto de búsqueda;
+        :Consultar en la BD proveedores activos por razón social o RUC;
+        note right: SELECT id_prov, razon_social, ruc FROM Proveedor WHERE estado = 'Activo' AND (razon_social LIKE '%?%' OR ruc = ?)
+        if (¿Existe proveedor?) then (NO)
+          :Mostrar panel <Aviso> "Proveedor no encontrado";
+          stop
+        else (SI)
+          :Cargar proveedor seleccionado en variable temporal;
+          :Mostrar datos del proveedor en el formulario;
+          stop
+        endif
+
+      case (boton <Agregar Ítem>)
+        :Validar btnAgregarItem;
+        if (isset(btnAgregarItem)) then (False)
+          :Mostrar panel <Error> "Acceso no permitido";
+          stop
+        else (TRUE)
+          :Sanitizar ítem, cantidad y costo unitario ingresados;
+          if (¿Cantidad > 0 y costo > 0?) then (NO)
+            :Mostrar panel <Error> "La cantidad y el costo unitario deben ser mayores a cero";
+            stop
+          else (SI)
+            :Calcular subtotal (cantidad x costo_unitario) y añadir ítem al arreglo temporal en Sesión;
+            :Recalcular costo total del ingreso;
+            :Actualizar grilla temporal del detalle en pantalla;
+            stop
+          endif
+        endif
+
+      case (boton <Eliminar Ítem>)
+        :Validar btnEliminarItem;
+        if (isset(btnEliminarItem)) then (False)
+          :Mostrar panel <Error> "Acceso no permitido";
+          stop
+        else (TRUE)
+          :Eliminar ítem del arreglo temporal en Sesión;
+          :Recalcular costo total del ingreso;
+          :Actualizar grilla temporal del detalle en pantalla;
+          stop
+        endif
+
+      case (boton <Cancelar>)
+        :Limpiar variables temporales de la sesión;
+        :Cerrar modal sin afectar el stock;
+        stop
+
+      case (boton <Confirmar Ingreso>)
+        :Validar btnConfirmarIngreso;
+        if (isset(btnConfirmarIngreso)) then (False)
+          :Mostrar panel <Error> "Acceso no permitido";
+          stop
+        else (TRUE)
+          :Validar que haya proveedor seleccionado, comprobante y al menos un ítem en el detalle;
+          if (¿Datos de ingreso válidos?) then (NO)
+            :Mostrar panel <Error> "Debe seleccionar un proveedor, ingresar comprobante y agregar al menos un ítem";
+            stop
+          else (SI)
+            :Generar correlativo autoincrementado del ingreso;
+            note right: SELECT COALESCE(MAX(num_ingreso), 0) + 1 FROM Ingreso_Mercancia
+            :Registrar en la BD la cabecera del ingreso de mercancía;
+            note right: INSERT INTO Ingreso_Mercancia (id_prov, id_usuario, fecha, num_ingreso, num_comprobante_prov, costo_total, estado) VALUES (?, ?, NOW(), ?, ?, ?, 'Registrado')
+            :Registrar en la BD cada ítem del detalle del ingreso;
+            note right: INSERT INTO Detalle_Ingreso (id_ingreso, id_prod, cantidad, costo_unitario, subtotal) VALUES (?, ?, ?, ?, ?)
+            :Sumar al stock físico de cada ítem ingresado;
+            note right: UPDATE Producto SET stock_fisico = stock_fisico + ? WHERE id_prod = ?
+            :Limpiar variables temporales de la sesión;
+            :Mostrar panel <Éxito> "Ingreso de mercancía registrado correctamente";
+            stop
+          endif
+        endif
+      endswitch
+    endif
+  endswitch
+endif
+
+@enduml

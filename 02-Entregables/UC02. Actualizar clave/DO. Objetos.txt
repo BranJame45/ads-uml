@@ -1,0 +1,74 @@
+@startuml
+skinparam ClassBackgroundColor #FFFFE0
+skinparam ClassBorderColor #8B0000
+skinparam ArrowColor #8B0000
+skinparam ClassStereotypeFontColor #8B0000
+skinparam ClassHeaderBackgroundColor #F5E6E6
+skinparam shadowing false
+skinparam DefaultFontName Arial
+
+title DO_Actualizar Clave (UC02)
+
+' ============================================================
+' AGENTE
+' ============================================================
+class "Usuario" as a_usuario <<Agente>>
+
+' ============================================================
+' FRONTERAS
+' ============================================================
+class "CI_FormularioActualizarClave" as b_form <<Frontera>> {
+  + txtClaveActual
+  + txtClaveNueva
+  + btnGuardar
+  + btnCancelar
+  --
+  + CI_FormularioActualizarClaveShow()
+  + clickCancelar()
+  + ingresarDatos()
+}
+
+class "CI_MensajeSistema" as b_msg <<Frontera>> {
+  + mensaje : String
+  + descripcion : String
+  + link : String
+  --
+  + CI_MensajeSistemaShow()
+}
+
+' ============================================================
+' CONTROLADOR
+' ============================================================
+class "CC_ActualizarClaveController" as ctrl <<Controlador>> {
+  + validarBtnActualizarClave()
+  + validarBoton()
+  + validarBtnGuardar()
+  + validarCampos()
+  + validarLongitudClave()
+  + verificarPasswordActual()
+  + encriptarPassword()
+}
+
+' ============================================================
+' ENTIDAD
+' ============================================================
+class "CE_usuario" as e_usuario <<Entidad>> {
+  - id_usu : INT
+  - password : VARCHAR(8)
+  --
+  + obtenerPasswordActual()
+  + actualizarPassword()
+}
+
+' ============================================================
+' RELACIONES NUMERADAS (orden del DS, priorizando camino negativo)
+' ============================================================
+a_usuario --> ctrl      : 1. validarBtnActualizarClave(btnActualizarClave)
+ctrl      --> b_form    : 2. CI_FormularioActualizarClaveShow()
+a_usuario --> b_form    : 3-cancel. [alt-Cancelar] clickCancelar(btnCancelar) → cierra formulario
+b_form    --> ctrl      : 3. [else-Guardar] ingresarDatos(claveActual, claveNueva, btnGuardar)
+ctrl      --> e_usuario : 4. obtenerPasswordActual(id_usu)
+ctrl      --> e_usuario : 5. actualizarPassword(id_usu, passwordEncriptada)
+ctrl      --> b_msg     : * CI_MensajeSistemaShow() en éxito o validación fallida
+
+@enduml

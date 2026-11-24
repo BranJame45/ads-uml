@@ -24,8 +24,8 @@ else (TRUE)
   switch (Clic en ....)
   case (boton <Buscar Cliente>)
     :Sanitizar input de búsqueda;
-    :Consultar en la BD clientes por documento o nombre;
-    note right: SELECT * FROM Cliente WHERE documento = ? OR nombre LIKE '%?%'
+    :Consultar en la BD clientes activos por documento o nombre;
+    note right: SELECT id_cliente, tipo_documento, documento, nombre FROM Cliente WHERE estado = 'Activo' AND (documento = ? OR nombre LIKE '%?%')
     :Verificar si el cliente existe en BD;
     if (¿Existe cliente?) then (SI)
       :Cargar datos del cliente en variable temporal;
@@ -48,7 +48,7 @@ else (TRUE)
         stop
       else (SI)
         :Consultar en la BD las reservas pendientes del cliente;
-        note right: SELECT * FROM Venta WHERE id_cliente = ? AND estado = 'Reservada'
+        note right: SELECT id_venta, fecha, total, adelanto, saldo FROM Venta WHERE id_cliente = ? AND estado = 'Reservada'
         :Verificar si el cliente tiene reservas activas;
         if (¿Tiene reservas?) then (NO)
           :Mostrar panel <Aviso> "El cliente no tiene reservas pendientes";
@@ -78,7 +78,18 @@ else (TRUE)
                 note right: UPDATE Producto SET stock_separado = stock_separado - cant, stock_fisico = stock_fisico - cant WHERE id_prod=?
                 :Generar el comprobante (Boleta/Factura);
                 :Mostrar panel <Éxito> "Venta completada. Comprobante generado";
-                stop
+                :Mostrar ventana <Vista de Comprobante> con datos de Boleta/Factura;
+                switch (Clic en ..)
+                case (boton <Imprimir>)
+                  :Enviar comprobante a impresión;
+                  stop
+                case (boton <Descargar PDF>)
+                  :Generar y descargar archivo PDF del comprobante;
+                  stop
+                case (boton <Finalizar>)
+                  :Redireccionar al panel <Selección de Cliente>;
+                  stop
+                endswitch
               endif
             endif
           endif
@@ -116,7 +127,7 @@ else (TRUE)
       case (boton <Buscar Ítem>)
         :Sanitizar texto de búsqueda;
         :Consultar en la BD productos por nombre, código o categoría;
-        note right: SELECT * FROM Producto WHERE estado='Activo' AND (nombre LIKE '%?%' OR codigo = ? OR categoria LIKE '%?%')
+        note right: SELECT p.* FROM Producto p INNER JOIN Categoria c ON p.id_categoria = c.id_categoria WHERE p.estado='Activo' AND (p.nombre LIKE '%?%' OR p.codigo = ? OR c.nombre LIKE '%?%')
         :Mostrar resultados actualizados en la grilla del catálogo;
         stop
 
@@ -134,6 +145,25 @@ else (TRUE)
           else (SI)
             :Añadir ítem al arreglo temporal en Sesión;
             :Calcular subtotal del ítem (precio x cantidad);
+            :Recalcular IGV y Total General del carrito;
+            :Mostrar ítem actualizado en la grilla del carrito con totales;
+            stop
+          endif
+        endif
+
+      case (boton <Modificar Cantidad>)
+        :Validar btnModificarCantidad;
+        if (isset(btnModificarCantidad)) then (False)
+          :Mostrar panel <Error> "Acceso no permitido";
+          stop
+        else (TRUE)
+          :Capturar ítem seleccionado y sanitizar nueva cantidad;
+          :Verificar nueva cantidad contra el stock físico en BD;
+          if (¿Cantidad > 0 y <= stock_fisico_bd?) then (NO)
+            :Mostrar panel <Error> "Stock inválido o insuficiente para la cantidad solicitada";
+            stop
+          else (SI)
+            :Actualizar cantidad y subtotal del ítem en Sesión;
             :Recalcular IGV y Total General del carrito;
             :Mostrar ítem actualizado en la grilla del carrito con totales;
             stop
@@ -164,11 +194,11 @@ else (TRUE)
             stop
           else (NO)
             :Capturar tipo de comprobante seleccionado en la ventana;
-            :Verificar que se haya asociado un cliente válido para emitir Factura;
-            if (¿Comprobante == Factura y id_cliente == 0?) then (SI)
-              :Mostrar panel <Error> "Para emitir FACTURA debe elegir un cliente registrado. Vuelva a Selección de Cliente.";
+            :Verificar que el cliente tenga DNI para Boleta (o Público General) o RUC para Factura;
+            if (¿Comprobante válido para el cliente?) then (NO)
+              :Mostrar panel <Error> "Para Factura requiere cliente con RUC y para Boleta cliente con DNI o Público General";
               stop
-            else (NO)
+            else (SI)
               :Mostrar formulario <Cobro Final> con resumen de la venta;
               if (Clic en ..) then (boton <Cancelar>)
                 :Limpiar arreglo temporal en Sesión;
@@ -204,7 +234,18 @@ else (TRUE)
                     note right: UPDATE Producto SET stock_fisico = stock_fisico - ? WHERE id_prod = ?
                     :Generar Comprobante PDF (Boleta/Factura);
                     :Mostrar panel <Éxito> "Venta registrada. Comprobante generado";
-                    stop
+                    :Mostrar ventana <Vista de Comprobante> con datos de Boleta/Factura;
+                    switch (Clic en ..)
+                    case (boton <Imprimir>)
+                      :Enviar comprobante a impresión;
+                      stop
+                    case (boton <Descargar PDF>)
+                      :Generar y descargar archivo PDF del comprobante;
+                      stop
+                    case (boton <Finalizar>)
+                      :Redireccionar al panel <Selección de Cliente>;
+                      stop
+                    endswitch
                   endif
                 endif
               endif

@@ -1,0 +1,149 @@
+@startuml
+skinparam ClassBackgroundColor #FFFFE0
+skinparam ClassBorderColor #8B0000
+skinparam ArrowColor #8B0000
+skinparam ClassStereotypeFontColor #8B0000
+skinparam ClassHeaderBackgroundColor #F5E6E6
+skinparam shadowing false
+skinparam DefaultFontName Arial
+
+title DO_Atender Reclamo y Devolución (UC07)
+
+' ============================================================
+' AGENTE
+' ============================================================
+class "Vendedor" as a_vendedor <<Agente>>
+
+' ============================================================
+' FRONTERAS
+' ============================================================
+class "CI_VentanaAtenderReclamo" as b_ventana <<Frontera>> {
+  + txtComprobante
+  + btnBuscarVenta
+  + lblFecha
+  + lblCliente
+  + lblTotal
+  + listadoDetalleVenta
+  + btnRegistrarReclamo
+  --
+  + CI_VentanaAtenderReclamoShow()
+  + clickBuscarVenta()
+  + clickRegistrarReclamo()
+}
+
+class "CI_FormularioReclamo" as b_form <<Frontera>> {
+  + cboProducto
+  + txtCantidad
+  + txtMotivo
+  + cboTipoResolucion
+  + lblMontoDevuelto
+  + btnConfirmarReclamo
+  + btnCancelar
+  --
+  + CI_FormularioReclamoShow()
+  + clickCancelar()
+  + ingresarDatos()
+}
+
+class "CI_MensajeSistema" as b_msg <<Frontera>> {
+  + mensaje : String
+  + descripcion : String
+  + link : String
+  --
+  + CI_MensajeSistemaShow()
+}
+
+' ============================================================
+' CONTROLADOR
+' ============================================================
+class "CC_AtenderReclamoController" as ctrl <<Controlador>> {
+  + validarBtnAtenderReclamo()
+  + validarBoton()
+  + validarRolVendedor()
+  + buscarVenta()
+  + validarCampoBusqueda()
+  + validarBtnRegistrarReclamo()
+  + validarVentaSeleccionada()
+  + validarBtnConfirmarReclamo()
+  + validarCamposReclamo()
+  + validarCantidadReclamo()
+  + calcularMontoDevuelto()
+}
+
+' ============================================================
+' ENTIDADES
+' ============================================================
+class "CE_venta" as e_venta <<Entidad>> {
+  - id_venta : INT
+  - id_cliente : INT (FK)
+  - fecha : DATETIME
+  - num_comprobante : VARCHAR(20)
+  - total : DECIMAL(10,2)
+  - estado : VARCHAR(15)
+  --
+  + obtenerVentaPorComprobante()
+}
+
+class "CE_detalle_venta" as e_detalle <<Entidad>> {
+  - id_detalle_venta : INT
+  - id_venta : INT (FK)
+  - id_prod : INT (FK)
+  - cantidad : INT
+  - precio_unitario : DECIMAL(10,2)
+  - subtotal : DECIMAL(10,2)
+  --
+  + obtenerDetalleVenta()
+}
+
+class "CE_reclamo" as e_reclamo <<Entidad>> {
+  - id_reclamo : INT
+  - id_venta : INT (FK)
+  - id_prod : INT (FK)
+  - id_usuario : INT (FK)
+  - motivo : TEXT
+  - cantidad : INT
+  - fecha : DATETIME
+  - tipo_resolucion : VARCHAR(30)
+  - monto_devuelto : DECIMAL(10,2)
+  - estado : VARCHAR(15)
+  --
+  + registrarReclamo()
+}
+
+class "CE_producto" as e_producto <<Entidad>> {
+  - id_prod : INT
+  - nombre : VARCHAR(100)
+  - stock_fisico : INT
+  --
+  + sumarStockFisico()
+  + descontarStockFisico()
+}
+
+' ============================================================
+' RELACIONES NUMERADAS (orden del DS, priorizando camino negativo)
+' ============================================================
+
+' -- Flujo inicial (Directo Actor -> Controlador) --
+a_vendedor --> ctrl      : 1. validarBtnAtenderReclamo(btnAtenderReclamo)
+ctrl       --> b_ventana : 2. CI_VentanaAtenderReclamoShow()
+
+' -- Rama Buscar Venta --
+b_ventana  --> ctrl      : 3a. [BUSCAR] buscarVenta(num_comprobante)
+ctrl       --> e_venta   : 4a. obtenerVentaPorComprobante(num_comprobante)
+ctrl       --> e_detalle : 5a. obtenerDetalleVenta(id_venta)
+ctrl       --> b_ventana : 6a. CI_VentanaAtenderReclamoShow(datosVenta, detalleVenta)
+
+' -- Rama Registrar Reclamo (1º Cancelar, 2º ConfirmarReclamo) --
+b_ventana  --> ctrl      : 3b. [RECLAMO] Envía btnRegistrarReclamo
+ctrl       --> b_form    : 4b. CI_FormularioReclamoShow(datosVenta, detalleVenta)
+a_vendedor --> b_form    : 5b-cancel. [alt-Cancelar] clickCancelar(btnCancelar) → cierra modal
+b_form     --> ctrl      : 5b. [else-Confirmar] ingresarDatos(..., btnConfirmarReclamo)
+ctrl       --> e_reclamo : 6b. registrarReclamo(id_venta, id_prod, id_usuario, motivo, cantidad, tipo_resolucion, monto_devuelto)
+ctrl       --> e_producto: 7b. sumarStockFisico(id_prod, cantidad)
+ctrl       --> e_producto: 8b. [opt Cambio de producto] descontarStockFisico(id_prod, cantidad)
+ctrl       --> b_ventana : 9b. CI_VentanaAtenderReclamoShow()
+
+' -- Mensajes de sistema --
+ctrl       --> b_msg     : * CI_MensajeSistemaShow() en éxito, aviso o validación fallida
+
+@enduml

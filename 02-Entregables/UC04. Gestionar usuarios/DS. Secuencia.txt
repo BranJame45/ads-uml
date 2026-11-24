@@ -1,0 +1,290 @@
+@startuml
+!pragma teoz true
+skinparam sequenceArrowColor #8B0000
+skinparam sequenceLifeLineBorderColor #8B0000
+skinparam sequenceParticipantBorderColor #8B0000
+skinparam sequenceParticipantBackgroundColor #FFFFE0
+skinparam sequenceActorBorderColor #8B0000
+skinparam sequenceGroupBorderColor #8B0000
+skinparam shadowing false
+skinparam DefaultFontName Arial
+
+title DS_Gestionar Usuarios (UC04)
+
+actor "Administrador" as admin
+boundary "CI_VentanaGestionarUsuario" as b_ventana
+boundary "CI_FormularioUsuario" as b_form
+boundary "CI_MensajeSistema" as b_msg
+control "CC_GestionarUsuarioController" as ctrl
+entity "CE_usuario" as e_usuario
+entity "CE_usuario_rol" as e_usuario_rol
+
+' =================== ARRANQUE (DIRECTO ACTOR -> CONTROLADOR) ===================
+admin -> ctrl : validarBtnGestionarUsuarios(btnGestionarUsuarios: String): bool
+activate ctrl
+
+ctrl -> ctrl : validarBoton(btnGestionarUsuarios: String): bool
+
+break si validarBoton() == false
+  ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+  b_msg --> admin : [Error] Acceso no permitido
+end
+
+ctrl -> ctrl : validarRolAdministrador(rolUsuario: String): bool
+
+break si validarRolAdministrador() == false
+  ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+  b_msg --> admin : [Error] Privilegios insuficientes
+end
+
+ctrl -> e_usuario : obtenerUsuarios(): List
+activate e_usuario
+e_usuario --> ctrl : listadoUsuarios
+deactivate e_usuario
+
+ctrl -> b_ventana : CI_VentanaGestionarUsuarioShow(listadoUsuarios: List)
+activate b_ventana
+b_ventana --> admin : Muestra VentanaGestionarUsuario con listado (activos e inactivos)
+
+' =================== RAMA BUSCAR ===================
+group BUSCAR USUARIO
+  admin -> b_ventana : clickBuscar(txtBuscador: String, btnBuscar: String)
+  b_ventana -> ctrl : buscarUsuarios(textoBusqueda: String): void
+
+  ctrl -> ctrl : validarCampoBusqueda(textoBusqueda: String): bool
+
+  break si validarCampoBusqueda() == false
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> admin : [Error] Debe ingresar un DNI, nombre o rol para buscar
+  end
+
+  ctrl -> e_usuario : obtenerUsuariosFiltrados(textoBusqueda: String): List
+  activate e_usuario
+  e_usuario --> ctrl : listadoFiltrado
+  deactivate e_usuario
+
+  ctrl -> b_ventana : CI_VentanaGestionarUsuarioShow(listadoFiltrado: List)
+  b_ventana --> admin : Actualiza grilla con los resultados de la búsqueda
+end
+
+' =================== RAMA AGREGAR ===================
+group AGREGAR USUARIO
+  admin -> b_ventana : clickNuevoUsuario(btnNuevoUsuario: String)
+  b_ventana -> ctrl : validarBtnNuevoUsuario(btnNuevoUsuario: String): bool
+
+  ctrl -> ctrl : validarBoton(btnNuevoUsuario: String): bool
+
+  break si validarBoton() == false
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> admin : [Error] Acceso no permitido
+  end
+
+  ctrl -> b_form : CI_FormularioUsuarioShow()
+  activate b_form
+  b_form --> admin : Muestra FormularioUsuario vacío con checkboxes de roles
+
+  alt el usuario presiona btnCancelar
+    admin -> b_form : clickCancelar(btnCancelar: String)
+    b_form --> admin : Cerrar modal y mantener vista actual
+  else el usuario presiona btnGuardarNuevo
+    admin -> b_form : ingresarDatos(documento: String, nombre_completo: String, username: String, password: String, roles: List, btnGuardarNuevo: String)
+    b_form -> ctrl : validarBtnGuardarNuevo(btnGuardarNuevo: String): bool
+
+    ctrl -> ctrl : validarBoton(btnGuardarNuevo: String): bool
+
+    break si validarBoton() == false
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> admin : [Error] Acceso no permitido
+    end
+
+    ctrl -> ctrl : validarCampos(documento: String, nombre_completo: String, username: String, password: String): int
+
+    break si validarCampos() == 0
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> admin : [Error] El DNI, nombre, usuario y contraseña son obligatorios
+    end
+
+    ctrl -> ctrl : validarRolesSeleccionados(roles: List): bool
+
+    break si validarRolesSeleccionados() == false
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> admin : [Error] Debe asignar al menos un rol al usuario
+    end
+
+    ctrl -> e_usuario : verificarDocumentoDuplicado(documento: String): int
+    activate e_usuario
+    e_usuario --> ctrl : resultado
+    deactivate e_usuario
+
+    break Si resultado != 0
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> admin : [Error] Ya existe un usuario registrado con ese DNI
+    end
+
+    ctrl -> ctrl : encriptarPassword(password: String): String
+
+    ctrl -> e_usuario : registrarUsuario(documento: String, nombre_completo: String, username: String, passwordHash: String): int
+    activate e_usuario
+    e_usuario --> ctrl : id_usu
+    deactivate e_usuario
+
+    ctrl -> e_usuario_rol : registrarRolesUsuario(id_usu: int, roles: List): bool
+    activate e_usuario_rol
+    e_usuario_rol --> ctrl : confirmacionRoles
+    deactivate e_usuario_rol
+
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> admin : [Éxito] Usuario registrado correctamente
+
+    ctrl -> e_usuario : obtenerUsuarios(): List
+    activate e_usuario
+    e_usuario --> ctrl : listadoUsuarios
+    deactivate e_usuario
+
+    ctrl -> b_ventana : CI_VentanaGestionarUsuarioShow(listadoUsuarios: List)
+    b_ventana --> admin : Muestra VentanaGestionarUsuario
+  end
+
+  deactivate b_form
+end
+
+' =================== RAMA EDITAR ===================
+group EDITAR USUARIO
+  admin -> b_ventana : clickEditarUsuario(btnEditarUsuario: String, id_usu: int)
+  b_ventana -> ctrl : validarBtnEditarUsuario(btnEditarUsuario: String): bool
+
+  ctrl -> ctrl : validarBoton(btnEditarUsuario: String): bool
+
+  break si validarBoton() == false
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> admin : [Error] Acceso no permitido
+  end
+
+  ctrl -> e_usuario : obtenerDatosUsuario(id_usu: int): Object
+  activate e_usuario
+  e_usuario --> ctrl : datosUsuario
+  deactivate e_usuario
+
+  break si datosUsuario es null
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> admin : [Error] El usuario solicitado no existe
+  end
+
+  ctrl -> b_form : CI_FormularioUsuarioShow(datosUsuario: Object)
+  activate b_form
+  b_form --> admin : Muestra FormularioUsuario con datos precargados (DNI sólo lectura) y roles marcados
+
+  alt el usuario presiona btnCancelar
+    admin -> b_form : clickCancelar(btnCancelar: String)
+    b_form --> admin : Cerrar modal y mantener vista actual
+  else el usuario presiona btnGuardarCambios
+    admin -> b_form : modificarDatos(nombre_completo: String, username: String, password: String, roles: List, btnGuardarCambios: String)
+    b_form -> ctrl : validarBtnGuardarCambios(btnGuardarCambios: String): bool
+
+    ctrl -> ctrl : validarBoton(btnGuardarCambios: String): bool
+
+    break si validarBoton() == false
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> admin : [Error] Acceso no permitido
+    end
+
+    ctrl -> ctrl : validarCamposEdicion(nombre_completo: String, username: String): int
+
+    break si validarCamposEdicion() == 0
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> admin : [Error] El nombre y el usuario son obligatorios
+    end
+
+    ctrl -> ctrl : validarRolesSeleccionados(roles: List): bool
+
+    break si validarRolesSeleccionados() == false
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> admin : [Error] Debe asignar al menos un rol al usuario
+    end
+
+    ctrl -> e_usuario : actualizarUsuario(id_usu: int, nombre_completo: String, username: String): bool
+    activate e_usuario
+    e_usuario --> ctrl : confirmacion
+    deactivate e_usuario
+
+    opt si escribió nueva contraseña (password != "")
+      ctrl -> ctrl : encriptarPassword(password: String): String
+      ctrl -> e_usuario : actualizarPassword(id_usu: int, passwordHash: String): bool
+      activate e_usuario
+      e_usuario --> ctrl : confirmacionPass
+      deactivate e_usuario
+    end
+
+    ctrl -> e_usuario_rol : actualizarRolesUsuario(id_usu: int, roles: List): bool
+    activate e_usuario_rol
+    e_usuario_rol --> ctrl : confirmacionRoles
+    deactivate e_usuario_rol
+
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> admin : [Éxito] Datos del usuario actualizados correctamente
+
+    ctrl -> e_usuario : obtenerUsuarios(): List
+    activate e_usuario
+    e_usuario --> ctrl : listadoUsuarios
+    deactivate e_usuario
+
+    ctrl -> b_ventana : CI_VentanaGestionarUsuarioShow(listadoUsuarios: List)
+    b_ventana --> admin : Muestra VentanaGestionarUsuario
+  end
+
+  deactivate b_form
+end
+
+' =================== RAMA CAMBIAR ESTADO ===================
+group CAMBIAR ESTADO USUARIO
+  admin -> b_ventana : clickCambiarEstado(btnCambiarEstado: String, id_usu: int)
+  b_ventana -> ctrl : validarBtnCambiarEstado(btnCambiarEstado: String): bool
+
+  ctrl -> ctrl : validarBoton(btnCambiarEstado: String): bool
+
+  break si validarBoton() == false
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> admin : [Error] Acceso no permitido
+  end
+
+  ctrl -> e_usuario : obtenerEstadoUsuario(id_usu: int): String
+  activate e_usuario
+  e_usuario --> ctrl : estadoActual
+  deactivate e_usuario
+
+  break si estadoActual es null
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> admin : [Error] El usuario solicitado no existe
+  end
+
+  alt si estadoActual == 'Activo'
+    ctrl -> e_usuario : cambiarEstadoUsuario(id_usu: int, 'Inactivo'): bool
+    activate e_usuario
+    e_usuario --> ctrl : confirmacion
+    deactivate e_usuario
+
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> admin : [Éxito] Usuario deshabilitado correctamente
+  else si estadoActual == 'Inactivo'
+    ctrl -> e_usuario : cambiarEstadoUsuario(id_usu: int, 'Activo'): bool
+    activate e_usuario
+    e_usuario --> ctrl : confirmacion
+    deactivate e_usuario
+
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> admin : [Éxito] Usuario habilitado correctamente
+  end
+
+  ctrl -> e_usuario : obtenerUsuarios(): List
+  activate e_usuario
+  e_usuario --> ctrl : listadoUsuarios
+  deactivate e_usuario
+
+  ctrl -> b_ventana : CI_VentanaGestionarUsuarioShow(listadoUsuarios: List)
+  b_ventana --> admin : Muestra VentanaGestionarUsuario
+end
+
+deactivate b_ventana
+deactivate ctrl
+
+@enduml

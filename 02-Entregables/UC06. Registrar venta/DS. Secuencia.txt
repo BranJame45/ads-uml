@@ -16,6 +16,7 @@ boundary "CI_VentanaSeleccionCliente" as b_sel_cliente
 boundary "CI_FormularioCobroReserva" as b_cobro_reserva
 boundary "CI_VentanaCatalogoCarrito" as b_catalogo
 boundary "CI_FormularioCobroFinal" as b_cobro_final
+boundary "CI_VistaComprobante" as b_comprobante
 boundary "CI_MensajeConfirmacion" as b_confirm
 boundary "CI_MensajeSistema" as b_msg
 control "CC_RegistrarVentaController" as ctrl
@@ -142,8 +143,24 @@ group COMPLETAR RESERVA EXISTENTE
     ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
     b_msg --> vendedor : [Éxito] Venta completada. Comprobante generado
 
-    ctrl -> b_sel_cliente : CI_VentanaSeleccionClienteShow()
-    b_sel_cliente --> vendedor : Muestra VentanaSeleccionCliente
+    ctrl -> b_comprobante : CI_VistaComprobanteShow(datosComprobante: Object)
+    activate b_comprobante
+    b_comprobante --> vendedor : Muestra VistaComprobante (Boleta/Factura)
+
+    alt el usuario presiona btnImprimir
+      vendedor -> b_comprobante : clickImprimir(btnImprimir: String)
+      b_comprobante --> vendedor : Envía comprobante a impresión
+    else el usuario presiona btnDescargarPDF
+      vendedor -> b_comprobante : clickDescargarPDF(btnDescargarPDF: String)
+      b_comprobante --> vendedor : Descarga archivo PDF del comprobante
+    else el usuario presiona btnFinalizar
+      vendedor -> b_comprobante : clickFinalizar(btnFinalizar: String)
+      b_comprobante --> vendedor : Redireccionar a Selección de Cliente
+      ctrl -> b_sel_cliente : CI_VentanaSeleccionClienteShow()
+      b_sel_cliente --> vendedor : Muestra VentanaSeleccionCliente
+    end
+
+    deactivate b_comprobante
   end
 
   deactivate b_cobro_reserva
@@ -242,7 +259,40 @@ group INICIAR NUEVA VENTA
     b_catalogo --> vendedor : Muestra ítem actualizado en la grilla del carrito con Subtotal, IGV y Total General
   end
 
-  ' --- SUB-RAMA 3.3: ELIMINAR ÍTEM DEL CARRITO ---
+  ' --- SUB-RAMA 3.3: MODIFICAR CANTIDAD DEL CARRITO ---
+  group MODIFICAR CANTIDAD DEL CARRITO
+    vendedor -> b_catalogo : clickModificarCantidad(id_prod: int, cantidad: int, btnModificarCantidad: String)
+    b_catalogo -> ctrl : validarBtnModificarCantidad(btnModificarCantidad: String): bool
+
+    ctrl -> ctrl : validarBoton(btnModificarCantidad: String): bool
+
+    break si validarBoton() == false
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> vendedor : [Error] Acceso no permitido
+    end
+
+    ctrl -> ctrl : validarCantidad(cantidad: int): int
+
+    break si validarCantidad() == 0
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> vendedor : [Error] La cantidad ingresada debe ser mayor a cero
+    end
+
+    ctrl -> e_producto : verificarStockProducto(id_prod: int, cantidad: int): int
+    activate e_producto
+    e_producto --> ctrl : resultado
+    deactivate e_producto
+
+    break si resultado == 0
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> vendedor : [Error] Stock inválido o insuficiente para la cantidad solicitada
+    end
+
+    ctrl -> b_catalogo : CI_VentanaCatalogoCarritoShow(carritoActualizado: List)
+    b_catalogo --> vendedor : Muestra ítem actualizado en la grilla del carrito con Subtotal, IGV y Total General
+  end
+
+  ' --- SUB-RAMA 3.4: ELIMINAR ÍTEM DEL CARRITO ---
   group ELIMINAR ÍTEM DEL CARRITO
     vendedor -> b_catalogo : clickEliminarItem(id_prod: int, btnEliminarItem: String)
     b_catalogo -> ctrl : validarBtnEliminarItem(btnEliminarItem: String): bool
@@ -258,7 +308,7 @@ group INICIAR NUEVA VENTA
     b_catalogo --> vendedor : Actualiza grilla del carrito en pantalla con totales recalculados
   end
 
-  ' --- SUB-RAMA 3.4: PROCESAR VENTA ---
+  ' --- SUB-RAMA 3.5: PROCESAR VENTA ---
   group PROCESAR VENTA
     vendedor -> b_catalogo : clickProcesarVenta(tipoComprobante: String, btnProcesarVenta: String)
     b_catalogo -> ctrl : validarBtnProcesarVenta(btnProcesarVenta: String): bool
@@ -277,11 +327,11 @@ group INICIAR NUEVA VENTA
       b_msg --> vendedor : [Error] Debe agregar productos al carrito
     end
 
-    ctrl -> ctrl : validarComprobanteCliente(tipoComprobante: String, id_cliente: int): bool
+    ctrl -> ctrl : validarComprobanteCliente(tipoComprobante: String, id_cliente: int, tipo_documento: String): bool
 
     break si validarComprobanteCliente() == false
       ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
-      b_msg --> vendedor : [Error] Para emitir FACTURA debe elegir un cliente registrado. Vuelva a Selección de Cliente.
+      b_msg --> vendedor : [Error] Para Factura requiere cliente con RUC y para Boleta cliente con DNI o Público General
     end
 
     ctrl -> b_cobro_final : CI_FormularioCobroFinalShow(resumenVenta: Object)
@@ -352,8 +402,24 @@ group INICIAR NUEVA VENTA
         ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
         b_msg --> vendedor : [Éxito] Venta registrada. Comprobante generado
 
-        ctrl -> b_sel_cliente : CI_VentanaSeleccionClienteShow()
-        b_sel_cliente --> vendedor : Muestra VentanaSeleccionCliente
+        ctrl -> b_comprobante : CI_VistaComprobanteShow(datosComprobante: Object)
+        activate b_comprobante
+        b_comprobante --> vendedor : Muestra VistaComprobante (Boleta/Factura)
+
+        alt el usuario presiona btnImprimir
+          vendedor -> b_comprobante : clickImprimir(btnImprimir: String)
+          b_comprobante --> vendedor : Envía comprobante a impresión
+        else el usuario presiona btnDescargarPDF
+          vendedor -> b_comprobante : clickDescargarPDF(btnDescargarPDF: String)
+          b_comprobante --> vendedor : Descarga archivo PDF del comprobante
+        else el usuario presiona btnFinalizar
+          vendedor -> b_comprobante : clickFinalizar(btnFinalizar: String)
+          b_comprobante --> vendedor : Redireccionar a Selección de Cliente
+          ctrl -> b_sel_cliente : CI_VentanaSeleccionClienteShow()
+          b_sel_cliente --> vendedor : Muestra VentanaSeleccionCliente
+        end
+
+        deactivate b_comprobante
       end
     end
 

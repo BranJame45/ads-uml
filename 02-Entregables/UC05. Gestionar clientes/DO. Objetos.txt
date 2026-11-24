@@ -1,0 +1,191 @@
+@startuml
+skinparam ClassBackgroundColor #FFFFE0
+skinparam ClassBorderColor #8B0000
+skinparam ArrowColor #8B0000
+skinparam ClassStereotypeFontColor #8B0000
+skinparam ClassHeaderBackgroundColor #F5E6E6
+skinparam shadowing false
+skinparam DefaultFontName Arial
+
+title DO_Gestionar Clientes (UC05)
+
+' ============================================================
+' AGENTE
+' ============================================================
+class "Vendedor" as a_vendedor <<Agente>>
+
+' ============================================================
+' FRONTERAS
+' ============================================================
+class "CI_VentanaGestionarCliente" as b_ventana <<Frontera>> {
+  + listadoClientes
+  + txtBuscador
+  + btnBuscar
+  + btnNuevoCliente
+  + btnEditarCliente
+  + btnEliminarCliente
+  + btnHistorialCliente
+  --
+  + CI_VentanaGestionarClienteShow()
+  + clickBuscar()
+  + clickNuevoCliente()
+  + clickEditarCliente()
+  + clickEliminarCliente()
+  + clickHistorialCliente()
+}
+
+class "CI_FormularioCliente" as b_form <<Frontera>> {
+  + cboTipoDocumento
+  + txtDocumento
+  + txtNombre
+  + txtTelefono
+  + txtCorreo
+  + txtDireccion
+  + btnGuardarNuevo
+  + btnGuardarCambios
+  + btnCancelar
+  --
+  + CI_FormularioClienteShow()
+  + clickCancelar()
+  + ingresarDatos()
+  + modificarDatos()
+}
+
+class "CI_ModalHistorialCliente" as b_historial <<Frontera>> {
+  + historialCompras
+  + btnCerrar
+  --
+  + CI_ModalHistorialClienteShow()
+  + clickCerrar()
+}
+
+class "CI_MensajeConfirmacion" as b_confirm <<Frontera>> {
+  + mensaje : String
+  + btnAceptar
+  + btnCancelar
+  --
+  + CI_MensajeConfirmacionShow()
+  + clickCancelar()
+  + clickAceptar()
+}
+
+class "CI_MensajeSistema" as b_msg <<Frontera>> {
+  + mensaje : String
+  + descripcion : String
+  + link : String
+  --
+  + CI_MensajeSistemaShow()
+}
+
+' ============================================================
+' CONTROLADOR
+' ============================================================
+class "CC_GestionarClienteController" as ctrl <<Controlador>> {
+  + validarBtnGestionarClientes()
+  + validarBoton()
+  + validarRolVendedor()
+  + buscarClientes()
+  + validarCampoBusqueda()
+  + validarBtnNuevoCliente()
+  + validarBtnGuardarNuevo()
+  + validarCampos()
+  + validarFormatoDocumento()
+  + validarBtnEditarCliente()
+  + validarBtnGuardarCambios()
+  + validarCamposEdicion()
+  + validarBtnEliminarCliente()
+  + validarBtnAceptar()
+  + validarBtnHistorialCliente()
+}
+
+' ============================================================
+' ENTIDADES
+' ============================================================
+class "CE_cliente" as e_cliente <<Entidad>> {
+  - id_cliente : INT
+  - tipo_documento : VARCHAR(10)
+  - documento : VARCHAR(15)
+  - nombre : VARCHAR(100)
+  - telefono : VARCHAR(20)
+  - correo : VARCHAR(100)
+  - direccion : VARCHAR(150)
+  - estado : VARCHAR(10)
+  --
+  + obtenerClientesActivos()
+  + obtenerClientesFiltrados()
+  + verificarDocumentoDuplicado()
+  + registrarCliente()
+  + obtenerDatosCliente()
+  + actualizarCliente()
+  + verificarExistenciaActiva()
+  + desactivarCliente()
+}
+
+class "CE_venta" as e_venta <<Entidad>> {
+  - id_venta : INT
+  - id_cliente : INT (FK)
+  - fecha : DATETIME
+  - num_comprobante : VARCHAR(20)
+  - tipo_comprobante : VARCHAR(20)
+  - total : DECIMAL(10,2)
+  - estado : VARCHAR(15)
+  --
+  + contarVentasCliente()
+  + obtenerHistorialCliente()
+}
+
+' ============================================================
+' RELACIONES NUMERADAS (orden del DS, priorizando camino negativo)
+' ============================================================
+
+' -- Flujo inicial (Directo Actor -> Controlador) --
+a_vendedor --> ctrl        : 1. validarBtnGestionarClientes(btnGestionarClientes)
+ctrl       --> e_cliente   : 2. obtenerClientesActivos()
+ctrl       --> b_ventana   : 3. CI_VentanaGestionarClienteShow(listadoClientes)
+
+' -- Rama Buscar --
+b_ventana  --> ctrl        : 4a. [BUSCAR] buscarClientes(textoBusqueda)
+ctrl       --> e_cliente   : 5a. obtenerClientesFiltrados(textoBusqueda)
+ctrl       --> b_ventana   : 6a. CI_VentanaGestionarClienteShow(listadoFiltrado)
+
+' -- Rama Agregar (1º Cancelar, 2º GuardarNuevo) --
+b_ventana  --> ctrl        : 4b. [AGREGAR] Envía btnNuevoCliente
+ctrl       --> b_form      : 5b. CI_FormularioClienteShow() vacío
+a_vendedor --> b_form      : 6b-cancel. [alt-Cancelar] clickCancelar(btnCancelar) → cierra modal
+b_form     --> ctrl        : 6b. [else-GuardarNuevo] ingresarDatos(..., btnGuardarNuevo)
+ctrl       --> e_cliente   : 7b. verificarDocumentoDuplicado(documento)
+ctrl       --> e_cliente   : 8b. registrarCliente(...)
+ctrl       --> e_cliente   : 9b. obtenerClientesActivos()
+ctrl       --> b_ventana   : 10b. CI_VentanaGestionarClienteShow(listadoClientes)
+
+' -- Rama Editar (1º Cancelar, 2º GuardarCambios) --
+b_ventana  --> ctrl        : 4c. [EDITAR] Envía btnEditarCliente
+ctrl       --> e_cliente   : 5c. obtenerDatosCliente(id_cliente)
+ctrl       --> b_form      : 6c. CI_FormularioClienteShow(datosCliente) con documento sólo lectura
+a_vendedor --> b_form      : 7c-cancel. [alt-Cancelar] clickCancelar(btnCancelar) → cierra modal
+b_form     --> ctrl        : 7c. [else-GuardarCambios] modificarDatos(..., btnGuardarCambios)
+ctrl       --> e_cliente   : 8c. actualizarCliente(id_cliente, nombre, telefono, correo, direccion)
+ctrl       --> e_cliente   : 9c. obtenerClientesActivos()
+ctrl       --> b_ventana   : 10c. CI_VentanaGestionarClienteShow(listadoClientes)
+
+' -- Rama Eliminar (1º Cancelar, 2º Aceptar) --
+b_ventana  --> ctrl        : 4d. [ELIMINAR] Envía btnEliminarCliente
+ctrl       --> b_confirm   : 5d. CI_MensajeConfirmacionShow()
+a_vendedor --> b_confirm   : 6d-cancel. [alt-Cancelar] clickCancelar(btnCancelar) → cierra confirmación
+b_confirm  --> ctrl        : 6d. [else-Aceptar] Envía btnAceptar
+ctrl       --> e_cliente   : 7d. verificarExistenciaActiva(id_cliente)
+ctrl       --> e_venta     : 8d. contarVentasCliente(id_cliente)
+ctrl       --> e_cliente   : 9d. desactivarCliente(id_cliente)
+ctrl       --> e_cliente   : 10d. obtenerClientesActivos()
+ctrl       --> b_ventana   : 11d. CI_VentanaGestionarClienteShow(listadoClientes)
+
+' -- Rama Ver Historial --
+b_ventana  --> ctrl        : 4e. [HISTORIAL] Envía btnHistorialCliente
+ctrl       --> e_venta     : 5e. obtenerHistorialCliente(id_cliente)
+ctrl       --> b_historial : 6e. CI_ModalHistorialClienteShow(historialCompras)
+a_vendedor --> b_historial : 7e. clickCerrar(btnCerrar)
+
+' -- Mensajes de sistema --
+ctrl       --> b_msg       : * CI_MensajeSistemaShow() en éxito o validación fallida
+
+@enduml

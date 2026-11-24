@@ -1,0 +1,190 @@
+@startuml
+!pragma teoz true
+skinparam sequenceArrowColor #8B0000
+skinparam sequenceLifeLineBorderColor #8B0000
+skinparam sequenceParticipantBorderColor #8B0000
+skinparam sequenceParticipantBackgroundColor #FFFFE0
+skinparam sequenceActorBorderColor #8B0000
+skinparam sequenceGroupBorderColor #8B0000
+skinparam shadowing false
+skinparam DefaultFontName Arial
+
+title DS_Registrar Ingreso de Mercancía (UC11)
+
+actor "Encargado de Almacén" as encargado
+boundary "CI_VentanaGestionarIngreso" as b_ventana
+boundary "CI_FormularioIngreso" as b_form
+boundary "CI_MensajeSistema" as b_msg
+control "CC_RegistrarIngresoController" as ctrl
+entity "CE_ingreso_mercancia" as e_ingreso
+entity "CE_detalle_ingreso" as e_detalle
+entity "CE_proveedor" as e_proveedor
+entity "CE_producto" as e_producto
+
+' =================== ARRANQUE (DIRECTO ACTOR -> CONTROLADOR) ===================
+encargado -> ctrl : validarBtnRegistrarIngreso(btnRegistrarIngreso: String): bool
+activate ctrl
+
+ctrl -> ctrl : validarBoton(btnRegistrarIngreso: String): bool
+
+break si validarBoton() == false
+  ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+  b_msg --> encargado : [Error] Acceso no permitido
+end
+
+ctrl -> ctrl : validarRolEncargadoAlmacen(rolUsuario: String): bool
+
+break si validarRolEncargadoAlmacen() == false
+  ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+  b_msg --> encargado : [Error] Privilegios insuficientes
+end
+
+ctrl -> e_ingreso : obtenerHistorialIngresos(): List
+activate e_ingreso
+e_ingreso --> ctrl : historialIngresos
+deactivate e_ingreso
+
+ctrl -> b_ventana : CI_VentanaGestionarIngresoShow(historialIngresos: List)
+activate b_ventana
+b_ventana --> encargado : Muestra VentanaGestionarIngreso con historial
+
+' =================== RAMA NUEVO INGRESO ===================
+group NUEVO INGRESO DE MERCANCÍA
+  encargado -> b_ventana : clickNuevoIngreso(btnNuevoIngreso: String)
+  b_ventana -> ctrl : validarBtnNuevoIngreso(btnNuevoIngreso: String): bool
+
+  ctrl -> ctrl : validarBoton(btnNuevoIngreso: String): bool
+
+  break si validarBoton() == false
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> encargado : [Error] Acceso no permitido
+  end
+
+  ctrl -> e_producto : obtenerItemsActivos(): List
+  activate e_producto
+  e_producto --> ctrl : listadoItems
+  deactivate e_producto
+
+  ctrl -> b_form : CI_FormularioIngresoShow(listadoItems: List)
+  activate b_form
+  b_form --> encargado : Muestra FormularioIngreso vacío con listado de ítems
+
+  ' --- SUB-RAMA: BUSCAR PROVEEDOR (sin isset por R4) ---
+  group BUSCAR PROVEEDOR
+    encargado -> b_form : clickBuscarProveedor(txtBuscarProveedor: String, btnBuscarProveedor: String)
+    b_form -> ctrl : buscarProveedor(textoBusqueda: String): void
+
+    ctrl -> e_proveedor : obtenerProveedoresFiltrados(textoBusqueda: String): List
+    activate e_proveedor
+    e_proveedor --> ctrl : listadoProveedores
+    deactivate e_proveedor
+
+    break si listadoProveedores está vacía
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> encargado : [Aviso] Proveedor no encontrado
+    end
+
+    ctrl -> b_form : CI_FormularioIngresoShow(datosProveedor: Object)
+    b_form --> encargado : Muestra proveedor seleccionado en el formulario
+  end
+
+  ' --- SUB-RAMA: AGREGAR ÍTEM ---
+  group AGREGAR ÍTEM AL DETALLE
+    encargado -> b_form : clickAgregarItem(id_prod: int, cantidad: double, costo_unitario: double, btnAgregarItem: String)
+    b_form -> ctrl : validarBtnAgregarItem(btnAgregarItem: String): bool
+
+    ctrl -> ctrl : validarBoton(btnAgregarItem: String): bool
+
+    break si validarBoton() == false
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> encargado : [Error] Acceso no permitido
+    end
+
+    ctrl -> ctrl : validarCantidadYCosto(cantidad: double, costo_unitario: double): bool
+
+    break si validarCantidadYCosto() == false
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> encargado : [Error] La cantidad y el costo unitario deben ser mayores a cero
+    end
+
+    ctrl -> b_form : CI_FormularioIngresoShow(detalleActualizado: List)
+    b_form --> encargado : Actualiza grilla temporal y costo total
+  end
+
+  ' --- SUB-RAMA: ELIMINAR ÍTEM ---
+  group ELIMINAR ÍTEM DEL DETALLE
+    encargado -> b_form : clickEliminarItem(id_prod: int, btnEliminarItem: String)
+    b_form -> ctrl : validarBtnEliminarItem(btnEliminarItem: String): bool
+
+    ctrl -> ctrl : validarBoton(btnEliminarItem: String): bool
+
+    break si validarBoton() == false
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> encargado : [Error] Acceso no permitido
+    end
+
+    ctrl -> b_form : CI_FormularioIngresoShow(detalleActualizado: List)
+    b_form --> encargado : Actualiza grilla temporal y costo total
+  end
+
+  ' --- SUB-RAMA: CANCELAR O CONFIRMAR (1º Cancelar, 2º Confirmar) ---
+  alt el usuario presiona btnCancelar
+    encargado -> b_form : clickCancelar(btnCancelar: String)
+    b_form --> encargado : Limpia sesión temporal y cierra modal sin afectar stock
+  else el usuario presiona btnConfirmarIngreso
+    encargado -> b_form : ingresarDatos(id_prov: int, num_comprobante_prov: String, btnConfirmarIngreso: String)
+    b_form -> ctrl : validarBtnConfirmarIngreso(btnConfirmarIngreso: String): bool
+
+    ctrl -> ctrl : validarBoton(btnConfirmarIngreso: String): bool
+
+    break si validarBoton() == false
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> encargado : [Error] Acceso no permitido
+    end
+
+    ctrl -> ctrl : validarDatosIngreso(id_prov: int, num_comprobante_prov: String, detalle: List): bool
+
+    break si validarDatosIngreso() == false
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> encargado : [Error] Debe seleccionar un proveedor, ingresar comprobante y agregar al menos un ítem
+    end
+
+    ctrl -> e_ingreso : obtenerCorrelativoIngreso(): int
+    activate e_ingreso
+    e_ingreso --> ctrl : num_ingreso
+    deactivate e_ingreso
+
+    ctrl -> e_ingreso : registrarIngreso(id_prov: int, id_usuario: int, num_ingreso: int, num_comprobante_prov: String, costo_total: double): int
+    activate e_ingreso
+    e_ingreso --> ctrl : id_ingreso
+    deactivate e_ingreso
+
+    ctrl -> e_detalle : registrarDetalleIngreso(id_ingreso: int, id_prod: int, cantidad: double, costo_unitario: double, subtotal: double): bool
+    activate e_detalle
+    e_detalle --> ctrl : confirmacionDetalle
+    deactivate e_detalle
+
+    ctrl -> e_producto : sumarStockFisico(id_prod: int, cantidad: double): bool
+    activate e_producto
+    e_producto --> ctrl : confirmacionStock
+    deactivate e_producto
+
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> encargado : [Éxito] Ingreso de mercancía registrado correctamente
+
+    ctrl -> e_ingreso : obtenerHistorialIngresos(): List
+    activate e_ingreso
+    e_ingreso --> ctrl : historialIngresos
+    deactivate e_ingreso
+
+    ctrl -> b_ventana : CI_VentanaGestionarIngresoShow(historialIngresos: List)
+    b_ventana --> encargado : Muestra VentanaGestionarIngreso con historial actualizado
+  end
+
+  deactivate b_form
+end
+
+deactivate b_ventana
+deactivate ctrl
+
+@enduml

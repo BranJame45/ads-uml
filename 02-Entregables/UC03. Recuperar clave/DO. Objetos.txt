@@ -1,0 +1,109 @@
+@startuml
+skinparam ClassBackgroundColor #FFFFE0
+skinparam ClassBorderColor #8B0000
+skinparam ArrowColor #8B0000
+skinparam ClassStereotypeFontColor #8B0000
+skinparam ClassHeaderBackgroundColor #F5E6E6
+skinparam shadowing false
+skinparam DefaultFontName Arial
+
+title DO_Recuperar Clave (UC03)
+
+' ============================================================
+' AGENTE
+' ============================================================
+class "Usuario" as a_usuario <<Agente>>
+
+' ============================================================
+' FRONTERAS
+' ============================================================
+class "CI_FormularioBuscarUsuario" as b_buscar <<Frontera>> {
+  + txtUsername
+  + btnBuscarUsuario
+  + btnCancelar
+  --
+  + CI_FormularioBuscarUsuarioShow()
+  + clickCancelar()
+  + ingresarUsername()
+}
+
+class "CI_FormularioPreguntaSecreta" as b_pregunta <<Frontera>> {
+  + lblPreguntaSecreta
+  + txtRespuestaSecreta
+  + btnVerificarRespuesta
+  + btnCancelar
+  --
+  + CI_FormularioPreguntaSecretaShow()
+  + clickCancelar()
+  + ingresarRespuesta()
+}
+
+class "CI_FormularioNuevaClave" as b_nueva_clave <<Frontera>> {
+  + txtClaveNueva
+  + btnGuardarClave
+  + btnCancelar
+  --
+  + CI_FormularioNuevaClaveShow()
+  + clickCancelar()
+  + ingresarNuevaClave()
+}
+
+class "CI_MensajeSistema" as b_msg <<Frontera>> {
+  + mensaje : String
+  + descripcion : String
+  + link : String
+  --
+  + CI_MensajeSistemaShow()
+}
+
+' ============================================================
+' CONTROLADOR
+' ============================================================
+class "CC_RecuperarClaveController" as ctrl <<Controlador>> {
+  + validarBtnRecuperarClave()
+  + validarBoton()
+  + validarBtnBuscarUsuario()
+  + validarCampoUsername()
+  + verificarEstadoActivo()
+  + validarBtnVerificarRespuesta()
+  + validarCampoRespuesta()
+  + validarBtnGuardarClave()
+  + validarLongitudClave()
+  + encriptarPassword()
+}
+
+' ============================================================
+' ENTIDAD
+' ============================================================
+class "CE_usuario" as e_usuario <<Entidad>> {
+  - id_usu : INT
+  - username : VARCHAR(50)
+  - password : VARCHAR(8)
+  - pregunta_secreta : VARCHAR(150)
+  - respuesta_secreta : VARCHAR(100)
+  - estado : VARCHAR(10)
+  --
+  + obtenerUsuarioPorUsername()
+  + verificarRespuestaSecreta()
+  + actualizarPassword()
+}
+
+' ============================================================
+' RELACIONES NUMERADAS (orden del DS, priorizando camino negativo)
+' ============================================================
+a_usuario     --> ctrl          : 1. validarBtnRecuperarClave(btnRecuperarClave)
+ctrl          --> b_buscar      : 2. CI_FormularioBuscarUsuarioShow()
+a_usuario     --> b_buscar      : 3-cancel. [alt-Cancelar] clickCancelar(btnCancelar) → cierra formulario
+b_buscar      --> ctrl          : 3. [else-Continuar] ingresarUsername(username, btnBuscarUsuario)
+ctrl          --> e_usuario     : 4. obtenerUsuarioPorUsername(username)
+ctrl          --> b_pregunta    : 5. CI_FormularioPreguntaSecretaShow(pregunta_secreta)
+a_usuario     --> b_pregunta    : 6-cancel. [alt-Cancelar] clickCancelar(btnCancelar) → cierra formulario
+b_pregunta    --> ctrl          : 6. [else-Verificar] ingresarRespuesta(respuesta_secreta, btnVerificarRespuesta)
+ctrl          --> e_usuario     : 7. verificarRespuestaSecreta(id_usu, respuesta_secreta)
+ctrl          --> b_nueva_clave : 8. CI_FormularioNuevaClaveShow()
+a_usuario     --> b_nueva_clave : 9-cancel. [alt-Cancelar] clickCancelar(btnCancelar) → cierra formulario
+b_nueva_clave --> ctrl          : 9. [else-Guardar] ingresarNuevaClave(claveNueva, btnGuardarClave)
+ctrl          --> e_usuario     : 10. actualizarPassword(id_usu, passwordEncriptada)
+ctrl          --> b_msg         : * CI_MensajeSistemaShow() en éxito o validación fallida
+
+@enduml

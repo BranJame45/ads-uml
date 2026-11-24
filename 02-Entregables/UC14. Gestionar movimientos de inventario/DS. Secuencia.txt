@@ -1,0 +1,181 @@
+@startuml
+!pragma teoz true
+skinparam sequenceArrowColor #8B0000
+skinparam sequenceLifeLineBorderColor #8B0000
+skinparam sequenceParticipantBorderColor #8B0000
+skinparam sequenceParticipantBackgroundColor #FFFFE0
+skinparam sequenceActorBorderColor #8B0000
+skinparam sequenceGroupBorderColor #8B0000
+skinparam shadowing false
+skinparam DefaultFontName Arial
+
+title DS_Gestionar Movimientos de Inventario (UC14)
+
+actor "Encargado de Almacén" as encargado
+boundary "CI_VentanaMovimientos" as b_ventana
+boundary "CI_ModalDetalleMovimiento" as b_detalle
+boundary "CI_FormularioAnulacion" as b_anular
+boundary "CI_MensajeSistema" as b_msg
+control "CC_GestionarMovimientosController" as ctrl
+entity "CE_movimiento_inventario" as e_movimiento
+entity "CE_producto" as e_producto
+
+' =================== ARRANQUE (DIRECTO ACTOR -> CONTROLADOR) ===================
+encargado -> ctrl : validarBtnGestionarMovimientos(btnGestionarMovimientos: String): bool
+activate ctrl
+
+ctrl -> ctrl : validarBoton(btnGestionarMovimientos: String): bool
+
+break si validarBoton() == false
+  ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+  b_msg --> encargado : [Error] Acceso no permitido
+end
+
+ctrl -> ctrl : validarRolEncargadoAlmacen(rolUsuario: String): bool
+
+break si validarRolEncargadoAlmacen() == false
+  ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+  b_msg --> encargado : [Error] Privilegios insuficientes
+end
+
+ctrl -> e_movimiento : obtenerMovimientos(): List
+activate e_movimiento
+e_movimiento --> ctrl : listadoMovimientos
+deactivate e_movimiento
+
+ctrl -> b_ventana : CI_VentanaMovimientosShow(listadoMovimientos: List)
+activate b_ventana
+b_ventana --> encargado : Muestra VentanaMovimientos en orden cronológico descendente
+
+' =================== RAMA FILTRAR ===================
+group FILTRAR MOVIMIENTOS
+  encargado -> b_ventana : clickFiltrar(tipo: String, item: String, fechaInicio: String, fechaFin: String, btnFiltrar: String)
+  b_ventana -> ctrl : filtrarMovimientos(tipo: String, item: String, fechaInicio: String, fechaFin: String): void
+
+  ctrl -> e_movimiento : obtenerMovimientosFiltrados(tipo: String, item: String, fechaInicio: String, fechaFin: String): List
+  activate e_movimiento
+  e_movimiento --> ctrl : listadoFiltrado
+  deactivate e_movimiento
+
+  ctrl -> b_ventana : CI_VentanaMovimientosShow(listadoFiltrado: List)
+  b_ventana --> encargado : Actualiza grilla con los movimientos filtrados
+end
+
+' =================== RAMA VER DETALLE / KARDEX ===================
+group VER DETALLE Y KARDEX
+  encargado -> b_ventana : clickVerDetalle(btnVerDetalle: String, id_movimiento: int)
+  b_ventana -> ctrl : validarBtnVerDetalle(btnVerDetalle: String): bool
+
+  ctrl -> ctrl : validarBoton(btnVerDetalle: String): bool
+
+  break si validarBoton() == false
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> encargado : [Error] Acceso no permitido
+  end
+
+  ctrl -> e_movimiento : obtenerDetalleMovimiento(id_movimiento: int): Object
+  activate e_movimiento
+  e_movimiento --> ctrl : datosMovimiento
+  deactivate e_movimiento
+
+  break si datosMovimiento es null
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> encargado : [Error] El movimiento solicitado no existe
+  end
+
+  ctrl -> e_movimiento : obtenerKardexItem(id_prod: int): List
+  activate e_movimiento
+  e_movimiento --> ctrl : kardexItem
+  deactivate e_movimiento
+
+  ctrl -> b_detalle : CI_ModalDetalleMovimientoShow(datosMovimiento: Object, kardexItem: List)
+  activate b_detalle
+  b_detalle --> encargado : Muestra ModalDetalleMovimiento y Kardex del ítem
+  encargado -> b_detalle : clickCerrar(btnCerrar: String)
+  b_detalle --> encargado : Cierra modal de detalle
+  deactivate b_detalle
+end
+
+' =================== RAMA ANULAR MOVIMIENTO ===================
+group ANULAR MOVIMIENTO
+  encargado -> b_ventana : clickAnularMovimiento(btnAnularMovimiento: String, id_movimiento: int)
+  b_ventana -> ctrl : validarBtnAnularMovimiento(btnAnularMovimiento: String): bool
+
+  ctrl -> ctrl : validarBoton(btnAnularMovimiento: String): bool
+
+  break si validarBoton() == false
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> encargado : [Error] Acceso no permitido
+  end
+
+  ctrl -> e_movimiento : obtenerDatosAnulacion(id_movimiento: int): Object
+  activate e_movimiento
+  e_movimiento --> ctrl : datosAnulacion
+  deactivate e_movimiento
+
+  break si datosAnulacion es null
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> encargado : [Error] El movimiento no existe o ya se encuentra anulado
+  end
+
+  ctrl -> b_anular : CI_FormularioAnulacionShow(datosAnulacion: Object)
+  activate b_anular
+  b_anular --> encargado : Muestra FormularioAnulacion solicitando motivo
+
+  alt el usuario presiona btnCancelar
+    encargado -> b_anular : clickCancelar(btnCancelar: String)
+    b_anular --> encargado : Cerrar modal sin realizar cambios
+  else el usuario presiona btnConfirmarAnulacion
+    encargado -> b_anular : ingresarMotivo(motivo_anulacion: String, btnConfirmarAnulacion: String)
+    b_anular -> ctrl : validarBtnConfirmarAnulacion(btnConfirmarAnulacion: String): bool
+
+    ctrl -> ctrl : validarBoton(btnConfirmarAnulacion: String): bool
+
+    break si validarBoton() == false
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> encargado : [Error] Acceso no permitido
+    end
+
+    ctrl -> ctrl : validarMotivoAnulacion(motivo_anulacion: String): bool
+
+    break si validarMotivoAnulacion() == false
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> encargado : [Error] Debe ingresar el motivo de la anulación
+    end
+
+    alt si es movimiento de Entrada
+      ctrl -> e_producto : descontarStockFisico(id_prod: int, cantidad: double): bool
+      activate e_producto
+      e_producto --> ctrl : confirmacionStock
+      deactivate e_producto
+    else si es movimiento de Salida
+      ctrl -> e_producto : sumarStockFisico(id_prod: int, cantidad: double): bool
+      activate e_producto
+      e_producto --> ctrl : confirmacionStock
+      deactivate e_producto
+    end
+
+    ctrl -> e_movimiento : anularMovimiento(id_movimiento: int, id_usuario: int, motivo_anulacion: String): bool
+    activate e_movimiento
+    e_movimiento --> ctrl : confirmacionAnulacion
+    deactivate e_movimiento
+
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> encargado : [Éxito] Movimiento anulado y stock revertido correctamente
+
+    ctrl -> e_movimiento : obtenerMovimientos(): List
+    activate e_movimiento
+    e_movimiento --> ctrl : listadoMovimientos
+    deactivate e_movimiento
+
+    ctrl -> b_ventana : CI_VentanaMovimientosShow(listadoMovimientos: List)
+    b_ventana --> encargado : Muestra VentanaMovimientos actualizada
+  end
+
+  deactivate b_anular
+end
+
+deactivate b_ventana
+deactivate ctrl
+
+@enduml

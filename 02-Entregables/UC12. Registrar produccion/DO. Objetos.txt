@@ -1,0 +1,134 @@
+@startuml
+skinparam ClassBackgroundColor #FFFFE0
+skinparam ClassBorderColor #8B0000
+skinparam ArrowColor #8B0000
+skinparam ClassStereotypeFontColor #8B0000
+skinparam ClassHeaderBackgroundColor #F5E6E6
+skinparam shadowing false
+skinparam DefaultFontName Arial
+
+title DO_Registrar Producción (UC12)
+
+' ============================================================
+' AGENTE
+' ============================================================
+class "Encargado de Almacén" as a_encargado <<Agente>>
+
+' ============================================================
+' FRONTERAS
+' ============================================================
+class "CI_VentanaRegistrarProduccion" as b_ventana <<Frontera>> {
+  + txtBuscarProducto
+  + btnBuscarProducto
+  + lblNombreProducto
+  + lblCodigoProducto
+  + lblStockActualTerminado
+  + txtCantidadProducir
+  + btnCalcularInsumos
+  + listadoRecetaCalculada
+  + btnConfirmarProduccion
+  + btnCancelar
+  --
+  + CI_VentanaRegistrarProduccionShow()
+  + clickBuscarProducto()
+  + clickCalcularInsumos()
+  + clickCancelar()
+  + clickConfirmarProduccion()
+}
+
+class "CI_MensajeSistema" as b_msg <<Frontera>> {
+  + mensaje : String
+  + descripcion : String
+  + link : String
+  --
+  + CI_MensajeSistemaShow()
+}
+
+' ============================================================
+' CONTROLADOR
+' ============================================================
+class "CC_RegistrarProduccionController" as ctrl <<Controlador>> {
+  + validarBtnRegistrarProduccion()
+  + validarBoton()
+  + validarRolEncargadoAlmacen()
+  + buscarProductoTerminado()
+  + validarCampoBusqueda()
+  + validarBtnCalcularInsumos()
+  + validarProductoEnSesion()
+  + validarCantidadProducir()
+  + calcularInsumosRequeridos()
+  + validarBtnConfirmarProduccion()
+  + validarRecetaEnSesion()
+}
+
+' ============================================================
+' ENTIDADES
+' ============================================================
+class "CE_producto" as e_producto <<Entidad>> {
+  - id_prod : INT
+  - codigo : VARCHAR(20)
+  - nombre : VARCHAR(100)
+  - stock_fisico : INT
+  - tipo : VARCHAR(20)
+  - estado : VARCHAR(10)
+  --
+  + buscarProductoTerminado()
+  + verificarStockInsumos()
+  + descontarStockFisico()
+  + sumarStockFisico()
+}
+
+class "CE_receta" as e_receta <<Entidad>> {
+  - id_receta : INT
+  - id_producto_terminado : INT (FK)
+  - id_insumo : INT (FK)
+  - cantidad_unitaria : DECIMAL(10,4)
+  --
+  + obtenerRecetaProducto()
+}
+
+class "CE_produccion" as e_produccion <<Entidad>> {
+  - id_produccion : INT
+  - id_producto : INT (FK)
+  - id_usuario : INT (FK)
+  - cantidad_producida : INT
+  - fecha : DATETIME
+  --
+  + registrarProduccion()
+}
+
+class "CE_produccion_detalle" as e_prod_detalle <<Entidad>> {
+  - id_produccion_detalle : INT
+  - id_produccion : INT (FK)
+  - id_insumo : INT (FK)
+  - cantidad_consumida : DECIMAL(10,4)
+  --
+  + registrarProduccionDetalle()
+}
+
+' ============================================================
+' RELACIONES NUMERADAS (orden del DS, priorizando camino negativo)
+' ============================================================
+a_encargado --> ctrl           : 1. validarBtnRegistrarProduccion(btnRegistrarProduccion)
+ctrl        --> b_ventana      : 2. CI_VentanaRegistrarProduccionShow()
+
+b_ventana   --> ctrl           : 3a. [BUSCAR] buscarProductoTerminado(textoBusqueda)
+ctrl        --> e_producto     : 4a. buscarProductoTerminado(textoBusqueda)
+ctrl        --> b_ventana      : 5a. CI_VentanaRegistrarProduccionShow(datosProducto)
+
+b_ventana   --> ctrl           : 3b. [CALCULAR] Envía btnCalcularInsumos(cantidad_producir)
+ctrl        --> e_receta       : 4b. obtenerRecetaProducto(id_producto)
+ctrl        --> b_ventana      : 5b. CI_VentanaRegistrarProduccionShow(recetaCalculada)
+
+a_encargado --> b_ventana      : 3c-cancel. [alt-Cancelar] clickCancelar(btnCancelar) → limpia sesión
+b_ventana   --> ctrl           : 3c. [else-Confirmar] Envía btnConfirmarProduccion
+ctrl        --> e_producto     : 4c. verificarStockInsumos(recetaCalculada)
+ctrl        --> e_produccion   : 5c. registrarProduccion(id_producto, cantidad_producida, id_usuario)
+ctrl        --> e_prod_detalle : 6c. registrarProduccionDetalle(id_produccion, id_insumo, cantidad_consumida)
+ctrl        --> e_producto     : 7c. descontarStockFisico(id_insumo, cantidad_consumida)
+ctrl        --> e_producto     : 8c. sumarStockFisico(id_producto, cantidad_producida)
+ctrl        --> b_ventana      : 9c. CI_VentanaRegistrarProduccionShow()
+
+ctrl        --> b_msg          : * CI_MensajeSistemaShow() en éxito, aviso o validación fallida
+
+@enduml

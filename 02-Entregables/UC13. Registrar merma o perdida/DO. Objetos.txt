@@ -1,0 +1,110 @@
+@startuml
+skinparam ClassBackgroundColor #FFFFE0
+skinparam ClassBorderColor #8B0000
+skinparam ArrowColor #8B0000
+skinparam ClassStereotypeFontColor #8B0000
+skinparam ClassHeaderBackgroundColor #F5E6E6
+skinparam shadowing false
+skinparam DefaultFontName Arial
+
+title DO_Registrar Merma o Pérdida (UC13)
+
+' ============================================================
+' AGENTE
+' ============================================================
+class "Encargado de Almacén" as a_encargado <<Agente>>
+
+' ============================================================
+' FRONTERAS
+' ============================================================
+class "CI_VentanaRegistrarMerma" as b_ventana <<Frontera>> {
+  + cboTipoItem
+  + txtBuscarItem
+  + btnBuscarItem
+  + lblNombre
+  + lblCodigo
+  + lblStockActual
+  + txtCantidadPerdida
+  + cboMotivo
+  + btnConfirmarMerma
+  + btnCancelar
+  --
+  + CI_VentanaRegistrarMermaShow()
+  + clickBuscarItem()
+  + clickCancelar()
+  + ingresarDatos()
+}
+
+class "CI_MensajeSistema" as b_msg <<Frontera>> {
+  + mensaje : String
+  + descripcion : String
+  + link : String
+  --
+  + CI_MensajeSistemaShow()
+}
+
+' ============================================================
+' CONTROLADOR
+' ============================================================
+class "CC_RegistrarMermaController" as ctrl <<Controlador>> {
+  + validarBtnRegistrarMerma()
+  + validarBoton()
+  + validarRolEncargadoAlmacen()
+  + buscarItem()
+  + validarTipoYBusqueda()
+  + validarBtnConfirmarMerma()
+  + validarItemEnSesion()
+  + validarCantidadYMotivo()
+  + validarStockDisponible()
+  + calcularCostoEstimado()
+}
+
+' ============================================================
+' ENTIDADES
+' ============================================================
+class "CE_producto" as e_producto <<Entidad>> {
+  - id_prod : INT
+  - codigo : VARCHAR(20)
+  - nombre : VARCHAR(100)
+  - costo_unitario : DECIMAL(10,2)
+  - stock_fisico : INT
+  - tipo : VARCHAR(20)
+  - estado : VARCHAR(10)
+  --
+  + buscarItemPorTipo()
+  + obtenerStockYCosto()
+  + descontarStockFisico()
+}
+
+class "CE_merma" as e_merma <<Entidad>> {
+  - id_merma : INT
+  - id_prod : INT (FK)
+  - id_usuario : INT (FK)
+  - fecha : DATETIME
+  - cantidad : DECIMAL(10,2)
+  - motivo : VARCHAR(50)
+  - costo_estimado : DECIMAL(10,2)
+  --
+  + registrarMerma()
+}
+
+' ============================================================
+' RELACIONES NUMERADAS (orden del DS, priorizando camino negativo)
+' ============================================================
+a_encargado --> ctrl       : 1. validarBtnRegistrarMerma(btnRegistrarMerma)
+ctrl        --> b_ventana  : 2. CI_VentanaRegistrarMermaShow()
+
+b_ventana   --> ctrl       : 3a. [BUSCAR] buscarItem(tipo, textoBusqueda)
+ctrl        --> e_producto : 4a. buscarItemPorTipo(tipo, textoBusqueda)
+ctrl        --> b_ventana  : 5a. CI_VentanaRegistrarMermaShow(datosItem)
+
+a_encargado --> b_ventana  : 3b-cancel. [alt-Cancelar] clickCancelar(btnCancelar) → limpia sesión sin afectar stock
+b_ventana   --> ctrl       : 3b. [else-Confirmar] ingresarDatos(cantidad, motivo, btnConfirmarMerma)
+ctrl        --> e_producto : 4b. obtenerStockYCosto(id_prod)
+ctrl        --> e_merma    : 5b. registrarMerma(id_prod, id_usuario, cantidad, motivo, costo_estimado)
+ctrl        --> e_producto : 6b. descontarStockFisico(id_prod, cantidad)
+ctrl        --> b_ventana  : 7b. CI_VentanaRegistrarMermaShow()
+
+ctrl        --> b_msg      : * CI_MensajeSistemaShow() en éxito, aviso o validación fallida
+
+@enduml

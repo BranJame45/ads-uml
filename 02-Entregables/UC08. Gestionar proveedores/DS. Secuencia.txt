@@ -1,0 +1,267 @@
+@startuml
+!pragma teoz true
+skinparam sequenceArrowColor #8B0000
+skinparam sequenceLifeLineBorderColor #8B0000
+skinparam sequenceParticipantBorderColor #8B0000
+skinparam sequenceParticipantBackgroundColor #FFFFE0
+skinparam sequenceActorBorderColor #8B0000
+skinparam sequenceGroupBorderColor #8B0000
+skinparam shadowing false
+skinparam DefaultFontName Arial
+
+title DS_Gestionar Proveedores (UC08)
+
+actor "Encargado de Almacén" as encargado
+boundary "CI_VentanaGestionarProveedor" as b_ventana
+boundary "CI_FormularioProveedor" as b_form
+boundary "CI_MensajeConfirmacion" as b_confirm
+boundary "CI_MensajeSistema" as b_msg
+control "CC_GestionarProveedorController" as ctrl
+entity "CE_proveedor" as e_proveedor
+
+' =================== ARRANQUE (DIRECTO ACTOR -> CONTROLADOR) ===================
+encargado -> ctrl : validarBtnGestionarProveedores(btnGestionarProveedores: String): bool
+activate ctrl
+
+ctrl -> ctrl : validarBoton(btnGestionarProveedores: String): bool
+
+break si validarBoton() == false
+  ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+  b_msg --> encargado : [Error] Acceso no permitido
+end
+
+ctrl -> ctrl : validarRolEncargadoAlmacen(rolUsuario: String): bool
+
+break si validarRolEncargadoAlmacen() == false
+  ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+  b_msg --> encargado : [Error] Privilegios insuficientes
+end
+
+ctrl -> e_proveedor : obtenerProveedoresActivos(): List
+activate e_proveedor
+e_proveedor --> ctrl : listadoProveedores
+deactivate e_proveedor
+
+ctrl -> b_ventana : CI_VentanaGestionarProveedorShow(listadoProveedores: List)
+activate b_ventana
+b_ventana --> encargado : Muestra VentanaGestionarProveedor con listado
+
+' =================== RAMA BUSCAR ===================
+group BUSCAR PROVEEDOR
+  encargado -> b_ventana : clickBuscar(txtBuscador: String, btnBuscar: String)
+  b_ventana -> ctrl : buscarProveedores(textoBusqueda: String): void
+
+  ctrl -> ctrl : validarCampoBusqueda(textoBusqueda: String): bool
+
+  break si validarCampoBusqueda() == false
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> encargado : [Error] Debe ingresar una razón social o RUC para buscar
+  end
+
+  ctrl -> e_proveedor : obtenerProveedoresFiltrados(textoBusqueda: String): List
+  activate e_proveedor
+  e_proveedor --> ctrl : listadoFiltrado
+  deactivate e_proveedor
+
+  ctrl -> b_ventana : CI_VentanaGestionarProveedorShow(listadoFiltrado: List)
+  b_ventana --> encargado : Actualiza grilla con los resultados de la búsqueda
+end
+
+' =================== RAMA AGREGAR ===================
+group AGREGAR PROVEEDOR
+  encargado -> b_ventana : clickNuevoProveedor(btnNuevoProveedor: String)
+  b_ventana -> ctrl : validarBtnNuevoProveedor(btnNuevoProveedor: String): bool
+
+  ctrl -> ctrl : validarBoton(btnNuevoProveedor: String): bool
+
+  break si validarBoton() == false
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> encargado : [Error] Acceso no permitido
+  end
+
+  ctrl -> b_form : CI_FormularioProveedorShow()
+  activate b_form
+  b_form --> encargado : Muestra FormularioProveedor vacío con RUC editable
+
+  alt el usuario presiona btnCancelar
+    encargado -> b_form : clickCancelar(btnCancelar: String)
+    b_form --> encargado : Cerrar modal y mantener vista actual
+  else el usuario presiona btnGuardarNuevo
+    encargado -> b_form : ingresarDatos(razon_social: String, ruc: String, telefono: String, correo: String, direccion: String, btnGuardarNuevo: String)
+    b_form -> ctrl : validarBtnGuardarNuevo(btnGuardarNuevo: String): bool
+
+    ctrl -> ctrl : validarBoton(btnGuardarNuevo: String): bool
+
+    break si validarBoton() == false
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> encargado : [Error] Acceso no permitido
+    end
+
+    ctrl -> ctrl : validarCampos(razon_social: String, ruc: String, telefono: String, correo: String, direccion: String): int
+
+    break si validarCampos() == 0
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> encargado : [Error] La razón social, RUC, teléfono, correo y dirección son obligatorios
+    end
+
+    ctrl -> e_proveedor : verificarRucDuplicado(ruc: String): int
+    activate e_proveedor
+    e_proveedor --> ctrl : resultado
+    deactivate e_proveedor
+
+    break Si resultado != 0
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> encargado : [Error] Ya existe un proveedor registrado con ese RUC
+    end
+
+    ctrl -> e_proveedor : registrarProveedor(razon_social: String, ruc: String, telefono: String, correo: String, direccion: String): int
+    activate e_proveedor
+    e_proveedor --> ctrl : id_prov
+    deactivate e_proveedor
+
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> encargado : [Éxito] Proveedor registrado correctamente
+
+    ctrl -> e_proveedor : obtenerProveedoresActivos(): List
+    activate e_proveedor
+    e_proveedor --> ctrl : listadoProveedores
+    deactivate e_proveedor
+
+    ctrl -> b_ventana : CI_VentanaGestionarProveedorShow(listadoProveedores: List)
+    b_ventana --> encargado : Muestra VentanaGestionarProveedor
+  end
+
+  deactivate b_form
+end
+
+' =================== RAMA EDITAR ===================
+group EDITAR PROVEEDOR
+  encargado -> b_ventana : clickEditarProveedor(btnEditarProveedor: String, id_prov: int)
+  b_ventana -> ctrl : validarBtnEditarProveedor(btnEditarProveedor: String): bool
+
+  ctrl -> ctrl : validarBoton(btnEditarProveedor: String): bool
+
+  break si validarBoton() == false
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> encargado : [Error] Acceso no permitido
+  end
+
+  ctrl -> e_proveedor : obtenerDatosProveedor(id_prov: int): Object
+  activate e_proveedor
+  e_proveedor --> ctrl : datosProveedor
+  deactivate e_proveedor
+
+  break si datosProveedor es null
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> encargado : [Error] El proveedor solicitado no existe
+  end
+
+  ctrl -> b_form : CI_FormularioProveedorShow(datosProveedor: Object)
+  activate b_form
+  b_form --> encargado : Muestra FormularioProveedor con datos precargados y RUC sólo lectura
+
+  alt el usuario presiona btnCancelar
+    encargado -> b_form : clickCancelar(btnCancelar: String)
+    b_form --> encargado : Cerrar modal y mantener vista actual
+  else el usuario presiona btnGuardarCambios
+    encargado -> b_form : modificarDatos(razon_social: String, telefono: String, correo: String, direccion: String, btnGuardarCambios: String)
+    b_form -> ctrl : validarBtnGuardarCambios(btnGuardarCambios: String): bool
+
+    ctrl -> ctrl : validarBoton(btnGuardarCambios: String): bool
+
+    break si validarBoton() == false
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> encargado : [Error] Acceso no permitido
+    end
+
+    ctrl -> ctrl : validarCamposEdicion(razon_social: String, telefono: String, correo: String, direccion: String): int
+
+    break si validarCamposEdicion() == 0
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> encargado : [Error] La razón social, teléfono, correo y dirección son obligatorios
+    end
+
+    ctrl -> e_proveedor : actualizarProveedor(id_prov: int, razon_social: String, telefono: String, correo: String, direccion: String): bool
+    activate e_proveedor
+    e_proveedor --> ctrl : confirmacion
+    deactivate e_proveedor
+
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> encargado : [Éxito] Datos del proveedor actualizados correctamente
+
+    ctrl -> e_proveedor : obtenerProveedoresActivos(): List
+    activate e_proveedor
+    e_proveedor --> ctrl : listadoProveedores
+    deactivate e_proveedor
+
+    ctrl -> b_ventana : CI_VentanaGestionarProveedorShow(listadoProveedores: List)
+    b_ventana --> encargado : Muestra VentanaGestionarProveedor
+  end
+
+  deactivate b_form
+end
+
+' =================== RAMA ELIMINAR ===================
+group ELIMINAR PROVEEDOR
+  encargado -> b_ventana : clickEliminarProveedor(btnEliminarProveedor: String, id_prov: int)
+  b_ventana -> ctrl : validarBtnEliminarProveedor(btnEliminarProveedor: String): bool
+
+  ctrl -> ctrl : validarBoton(btnEliminarProveedor: String): bool
+
+  break si validarBoton() == false
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> encargado : [Error] Acceso no permitido
+  end
+
+  ctrl -> b_confirm : CI_MensajeConfirmacionShow(msg: String)
+  activate b_confirm
+  b_confirm --> encargado : Muestra MensajeConfirmacion (btnAceptar, btnCancelar)
+
+  alt el usuario presiona btnCancelar
+    encargado -> b_confirm : clickCancelar(btnCancelar: String)
+    b_confirm --> encargado : Cerrar confirmación y mantener vista actual
+    deactivate b_confirm
+  else el usuario presiona btnAceptar
+    encargado -> b_confirm : clickAceptar(btnAceptar: String)
+    b_confirm -> ctrl : validarBtnAceptar(btnAceptar: String): bool
+    deactivate b_confirm
+
+    ctrl -> ctrl : validarBoton(btnAceptar: String): bool
+
+    break si validarBoton() == false
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> encargado : [Error] Acceso no permitido
+    end
+
+    ctrl -> e_proveedor : verificarExistenciaActiva(id_prov: int): int
+    activate e_proveedor
+    e_proveedor --> ctrl : resultado
+    deactivate e_proveedor
+
+    break si resultado == 0
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> encargado : [Error] El proveedor solicitado no existe
+    end
+
+    ctrl -> e_proveedor : desactivarProveedor(id_prov: int): bool
+    activate e_proveedor
+    e_proveedor --> ctrl : confirmacion
+    deactivate e_proveedor
+
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> encargado : [Éxito] Proveedor eliminado (inhabilitado) correctamente
+
+    ctrl -> e_proveedor : obtenerProveedoresActivos(): List
+    activate e_proveedor
+    e_proveedor --> ctrl : listadoProveedores
+    deactivate e_proveedor
+
+    ctrl -> b_ventana : CI_VentanaGestionarProveedorShow(listadoProveedores: List)
+    b_ventana --> encargado : Muestra VentanaGestionarProveedor
+  end
+end
+
+deactivate b_ventana
+deactivate ctrl
+
+@enduml

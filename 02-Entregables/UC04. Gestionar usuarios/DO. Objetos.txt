@@ -1,0 +1,156 @@
+@startuml
+skinparam ClassBackgroundColor #FFFFE0
+skinparam ClassBorderColor #8B0000
+skinparam ArrowColor #8B0000
+skinparam ClassStereotypeFontColor #8B0000
+skinparam ClassHeaderBackgroundColor #F5E6E6
+skinparam shadowing false
+skinparam DefaultFontName Arial
+
+title DO_Gestionar Usuarios (UC04)
+
+' ============================================================
+' AGENTE
+' ============================================================
+class "Administrador" as a_admin <<Agente>>
+
+' ============================================================
+' FRONTERAS
+' ============================================================
+class "CI_VentanaGestionarUsuario" as b_ventana <<Frontera>> {
+  + listadoUsuarios
+  + txtBuscador
+  + btnBuscar
+  + btnNuevoUsuario
+  + btnEditarUsuario
+  + btnCambiarEstado
+  --
+  + CI_VentanaGestionarUsuarioShow()
+  + clickBuscar()
+  + clickNuevoUsuario()
+  + clickEditarUsuario()
+  + clickCambiarEstado()
+}
+
+class "CI_FormularioUsuario" as b_form <<Frontera>> {
+  + txtDNI
+  + txtNombreCompleto
+  + txtUsername
+  + txtPassword
+  + chkRoles[ ]
+  + btnGuardarNuevo
+  + btnGuardarCambios
+  + btnCancelar
+  --
+  + CI_FormularioUsuarioShow()
+  + clickCancelar()
+  + ingresarDatos()
+  + modificarDatos()
+}
+
+class "CI_MensajeSistema" as b_msg <<Frontera>> {
+  + mensaje : String
+  + descripcion : String
+  + link : String
+  --
+  + CI_MensajeSistemaShow()
+}
+
+' ============================================================
+' CONTROLADOR
+' ============================================================
+class "CC_GestionarUsuarioController" as ctrl <<Controlador>> {
+  + validarBtnGestionarUsuarios()
+  + validarBoton()
+  + validarRolAdministrador()
+  + buscarUsuarios()
+  + validarCampoBusqueda()
+  + validarBtnNuevoUsuario()
+  + validarBtnGuardarNuevo()
+  + validarCampos()
+  + validarRolesSeleccionados()
+  + encriptarPassword()
+  + validarBtnEditarUsuario()
+  + validarBtnGuardarCambios()
+  + validarCamposEdicion()
+  + validarBtnCambiarEstado()
+}
+
+' ============================================================
+' ENTIDADES
+' ============================================================
+class "CE_usuario" as e_usuario <<Entidad>> {
+  - id_usu : INT
+  - documento : VARCHAR(8)
+  - nombre_completo : VARCHAR(100)
+  - username : VARCHAR(50)
+  - password : VARCHAR(8)
+  - estado : VARCHAR(10)
+  --
+  + obtenerUsuarios()
+  + obtenerUsuariosFiltrados()
+  + verificarDocumentoDuplicado()
+  + registrarUsuario()
+  + obtenerDatosUsuario()
+  + actualizarUsuario()
+  + actualizarPassword()
+  + obtenerEstadoUsuario()
+  + cambiarEstadoUsuario()
+}
+
+class "CE_usuario_rol" as e_usuario_rol <<Entidad>> {
+  - id_usu : INT (FK)
+  - id_rol : INT (FK)
+  --
+  + registrarRolesUsuario()
+  + actualizarRolesUsuario()
+}
+
+' ============================================================
+' RELACIONES NUMERADAS (orden del DS, priorizando camino negativo)
+' ============================================================
+
+' -- Flujo inicial (Directo Actor -> Controlador) --
+a_admin   --> ctrl          : 1. validarBtnGestionarUsuarios(btnGestionarUsuarios)
+ctrl      --> e_usuario     : 2. obtenerUsuarios()
+ctrl      --> b_ventana     : 3. CI_VentanaGestionarUsuarioShow(listadoUsuarios)
+
+' -- Rama Buscar --
+b_ventana --> ctrl          : 4a. [BUSCAR] buscarUsuarios(textoBusqueda)
+ctrl      --> e_usuario     : 5a. obtenerUsuariosFiltrados(textoBusqueda)
+ctrl      --> b_ventana     : 6a. CI_VentanaGestionarUsuarioShow(listadoFiltrado)
+
+' -- Rama Agregar (1º Cancelar, 2º GuardarNuevo) --
+b_ventana --> ctrl          : 4b. [AGREGAR] Envía btnNuevoUsuario
+ctrl      --> b_form        : 5b. CI_FormularioUsuarioShow() vacío
+a_admin   --> b_form        : 6b-cancel. [alt-Cancelar] clickCancelar(btnCancelar) → cierra modal
+b_form    --> ctrl          : 6b. [else-GuardarNuevo] ingresarDatos(..., btnGuardarNuevo)
+ctrl      --> e_usuario     : 7b. verificarDocumentoDuplicado(documento)
+ctrl      --> e_usuario     : 8b. registrarUsuario(documento, nombre_completo, username, passwordHash)
+ctrl      --> e_usuario_rol : 9b. registrarRolesUsuario(id_usu, roles)
+ctrl      --> e_usuario     : 10b. obtenerUsuarios()
+ctrl      --> b_ventana     : 11b. CI_VentanaGestionarUsuarioShow(listadoUsuarios)
+
+' -- Rama Editar (1º Cancelar, 2º GuardarCambios) --
+b_ventana --> ctrl          : 4c. [EDITAR] Envía btnEditarUsuario
+ctrl      --> e_usuario     : 5c. obtenerDatosUsuario(id_usu)
+ctrl      --> b_form        : 6c. CI_FormularioUsuarioShow(datosUsuario) con DNI sólo lectura
+a_admin   --> b_form        : 7c-cancel. [alt-Cancelar] clickCancelar(btnCancelar) → cierra modal
+b_form    --> ctrl          : 7c. [else-GuardarCambios] modificarDatos(..., btnGuardarCambios)
+ctrl      --> e_usuario     : 8c. actualizarUsuario(id_usu, nombre_completo, username)
+ctrl      --> e_usuario     : 9c. [opt nueva clave] actualizarPassword(id_usu, passwordHash)
+ctrl      --> e_usuario_rol : 10c. actualizarRolesUsuario(id_usu, roles)
+ctrl      --> e_usuario     : 11c. obtenerUsuarios()
+ctrl      --> b_ventana     : 12c. CI_VentanaGestionarUsuarioShow(listadoUsuarios)
+
+' -- Rama Cambiar Estado --
+b_ventana --> ctrl          : 4d. [CAMBIAR ESTADO] Envía btnCambiarEstado
+ctrl      --> e_usuario     : 5d. obtenerEstadoUsuario(id_usu)
+ctrl      --> e_usuario     : 6d. cambiarEstadoUsuario(id_usu, nuevoEstado)
+ctrl      --> e_usuario     : 7d. obtenerUsuarios()
+ctrl      --> b_ventana     : 8d. CI_VentanaGestionarUsuarioShow(listadoUsuarios)
+
+' -- Mensajes de sistema (éxito o error de cualquier validación) --
+ctrl      --> b_msg         : * CI_MensajeSistemaShow() en éxito o validación fallida
+
+@enduml

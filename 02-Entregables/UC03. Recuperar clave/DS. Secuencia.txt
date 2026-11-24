@@ -1,0 +1,165 @@
+@startuml
+!pragma teoz true
+skinparam sequenceArrowColor #8B0000
+skinparam sequenceLifeLineBorderColor #8B0000
+skinparam sequenceParticipantBorderColor #8B0000
+skinparam sequenceParticipantBackgroundColor #FFFFE0
+skinparam sequenceActorBorderColor #8B0000
+skinparam sequenceGroupBorderColor #8B0000
+skinparam shadowing false
+skinparam DefaultFontName Arial
+
+title DS_Recuperar Clave (UC03)
+
+actor "Usuario" as usuario
+boundary "CI_FormularioBuscarUsuario" as b_buscar
+boundary "CI_FormularioPreguntaSecreta" as b_pregunta
+boundary "CI_FormularioNuevaClave" as b_nueva_clave
+boundary "CI_MensajeSistema" as b_msg
+control "CC_RecuperarClaveController" as ctrl
+entity "CE_usuario" as e_usuario
+
+' =================== ARRANQUE (DIRECTO ACTOR -> CONTROLADOR) ===================
+usuario -> ctrl : validarBtnRecuperarClave(btnRecuperarClave: String): bool
+activate ctrl
+
+ctrl -> ctrl : validarBoton(btnRecuperarClave: String): bool
+
+break si validarBoton() == false
+  ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+  b_msg --> usuario : [Error] Acceso no permitido
+end
+
+ctrl -> b_buscar : CI_FormularioBuscarUsuarioShow()
+activate b_buscar
+b_buscar --> usuario : Muestra FormularioBuscarUsuario (txtUsername)
+
+' =================== PASO 1: BUSCAR USUARIO ===================
+group BUSCAR USUARIO
+  alt el usuario presiona btnCancelar
+    usuario -> b_buscar : clickCancelar(btnCancelar: String)
+    b_buscar --> usuario : Cerrar formulario y mantener vista actual
+  else el usuario presiona btnBuscarUsuario
+    usuario -> b_buscar : ingresarUsername(username: String, btnBuscarUsuario: String)
+    b_buscar -> ctrl : validarBtnBuscarUsuario(btnBuscarUsuario: String): bool
+
+    ctrl -> ctrl : validarBoton(btnBuscarUsuario: String): bool
+
+    break si validarBoton() == false
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> usuario : [Error] Acceso no permitido
+    end
+
+    ctrl -> ctrl : validarCampoUsername(username: String): bool
+
+    break si validarCampoUsername() == false
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> usuario : [Error] Debe ingresar su nombre de usuario
+    end
+
+    ctrl -> e_usuario : obtenerUsuarioPorUsername(username: String): Object
+    activate e_usuario
+    e_usuario --> ctrl : datosUsuario
+    deactivate e_usuario
+
+    break si datosUsuario es null
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> usuario : [Error] El usuario ingresado no existe
+    end
+
+    ctrl -> ctrl : verificarEstadoActivo(estado: String): bool
+
+    break si verificarEstadoActivo() == false
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> usuario : [Error] El usuario se encuentra inactivo
+    end
+
+    ctrl -> b_pregunta : CI_FormularioPreguntaSecretaShow(pregunta_secreta: String)
+    activate b_pregunta
+    b_pregunta --> usuario : Muestra FormularioPreguntaSecreta con la pregunta del usuario
+
+    ' =================== PASO 2: VERIFICAR RESPUESTA SECRETA ===================
+    group VERIFICAR PREGUNTA SECRETA
+      alt el usuario presiona btnCancelar
+        usuario -> b_pregunta : clickCancelar(btnCancelar: String)
+        b_pregunta --> usuario : Cerrar formulario y mantener vista actual
+      else el usuario presiona btnVerificarRespuesta
+        usuario -> b_pregunta : ingresarRespuesta(respuesta_secreta: String, btnVerificarRespuesta: String)
+        b_pregunta -> ctrl : validarBtnVerificarRespuesta(btnVerificarRespuesta: String): bool
+
+        ctrl -> ctrl : validarBoton(btnVerificarRespuesta: String): bool
+
+        break si validarBoton() == false
+          ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+          b_msg --> usuario : [Error] Acceso no permitido
+        end
+
+        ctrl -> ctrl : validarCampoRespuesta(respuesta_secreta: String): bool
+
+        break si validarCampoRespuesta() == false
+          ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+          b_msg --> usuario : [Error] Debe ingresar su respuesta secreta
+        end
+
+        ctrl -> e_usuario : verificarRespuestaSecreta(id_usu: int, respuesta_secreta: String): int
+        activate e_usuario
+        e_usuario --> ctrl : resultado
+        deactivate e_usuario
+
+        break si resultado == 0
+          ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+          b_msg --> usuario : [Error] La respuesta secreta ingresada es incorrecta
+        end
+
+        ctrl -> b_nueva_clave : CI_FormularioNuevaClaveShow()
+        activate b_nueva_clave
+        b_nueva_clave --> usuario : Muestra FormularioNuevaClave (txtClaveNueva)
+
+        ' =================== PASO 3: ESTABLECER NUEVA CLAVE ===================
+        group ESTABLECER NUEVA CLAVE
+          alt el usuario presiona btnCancelar
+            usuario -> b_nueva_clave : clickCancelar(btnCancelar: String)
+            b_nueva_clave --> usuario : Cerrar formulario y mantener vista actual
+          else el usuario presiona btnGuardarClave
+            usuario -> b_nueva_clave : ingresarNuevaClave(claveNueva: String, btnGuardarClave: String)
+            b_nueva_clave -> ctrl : validarBtnGuardarClave(btnGuardarClave: String): bool
+
+            ctrl -> ctrl : validarBoton(btnGuardarClave: String): bool
+
+            break si validarBoton() == false
+              ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+              b_msg --> usuario : [Error] Acceso no permitido
+            end
+
+            ctrl -> ctrl : validarLongitudClave(claveNueva: String): bool
+
+            break si validarLongitudClave() == false
+              ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+              b_msg --> usuario : [Error] La nueva contraseña debe tener al menos 8 caracteres
+            end
+
+            ctrl -> ctrl : encriptarPassword(claveNueva: String): String
+
+            ctrl -> e_usuario : actualizarPassword(id_usu: int, passwordEncriptada: String): bool
+            activate e_usuario
+            e_usuario --> ctrl : confirmacion
+            deactivate e_usuario
+
+            ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+            b_msg --> usuario : [Éxito] Contraseña restablecida correctamente
+          end
+
+          deactivate b_nueva_clave
+        end
+      end
+
+      deactivate b_pregunta
+    end
+  end
+
+  deactivate b_buscar
+end
+
+deactivate ctrl
+
+@enduml

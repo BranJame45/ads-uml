@@ -1,0 +1,166 @@
+@startuml
+scale 0.6
+skinparam ActivityBackgroundColor #FFFFE0
+skinparam ActivityBorderColor #8B0000
+skinparam ArrowColor #8B0000
+skinparam PartitionBorderColor #000000
+skinparam shadowing false
+skinparam DefaultFontName Arial
+
+title Diagrama de Actividades - UC09: Gestionar Insumos Químicos
+
+|Encargado de Almacén|
+start
+:Dar clic en el botón "Gestionar Insumos" del Panel Principal;
+
+|Sistema|
+:Validar btnGestionarInsumos;
+if (isset(btnGestionarInsumos)) then (False)
+  :Mostrar panel <Error> "Acceso no permitido";
+  stop
+else (TRUE)
+  :Consultar en la BD la lista de insumos activos con su unidad de medida y estado de stock;
+  note right: SELECT p.id_prod, p.nombre, u.nombre AS unidad, p.stock_fisico, p.stock_minimo, p.costo_unitario, CASE WHEN p.stock_fisico <= p.stock_minimo THEN 'Crítico' ELSE 'Normal' END AS estado_stock FROM Producto p INNER JOIN Unidad_Medida u ON p.id_unidad = u.id_unidad WHERE p.tipo = 'Insumo' AND p.estado = 'Activo' ORDER BY p.nombre
+  :Mostrar ventana <Gestión de Insumos> con grilla (resalta críticos), buscador y botón [Nuevo Insumo];
+
+  switch (Clic en ....)
+  case (boton <Buscar>)
+    :Sanitizar texto de búsqueda;
+    :Verificar si el campo tiene contenido;
+    if (¿Campo vacío?) then (SI)
+      :Mostrar panel <Error> "Debe ingresar un nombre o categoría para buscar";
+      stop
+    else (NO)
+      :Consultar en la BD insumos activos filtrados por nombre o categoría;
+      note right: SELECT p.id_prod, p.nombre, u.nombre AS unidad, p.stock_fisico, p.stock_minimo, p.costo_unitario, CASE WHEN p.stock_fisico <= p.stock_minimo THEN 'Crítico' ELSE 'Normal' END AS estado_stock FROM Producto p INNER JOIN Categoria c ON p.id_categoria = c.id_categoria INNER JOIN Unidad_Medida u ON p.id_unidad = u.id_unidad WHERE p.tipo = 'Insumo' AND p.estado = 'Activo' AND (p.nombre LIKE '%?%' OR c.nombre LIKE '%?%')
+      :Actualizar grilla con los resultados de la búsqueda;
+      stop
+    endif
+
+  case (boton <Nuevo Insumo>)
+    :Validar btnNuevoInsumo;
+    if (isset(btnNuevoInsumo)) then (False)
+      :Mostrar panel <Error> "Acceso no permitido";
+      stop
+    else (TRUE)
+      :Consultar en la BD categorías activas;
+      note right: SELECT id_categoria, nombre FROM Categoria WHERE estado = 'Activo' ORDER BY nombre
+      :Consultar en la BD unidades de medida activas;
+      note right: SELECT id_unidad, nombre, abreviatura FROM Unidad_Medida WHERE estado = 'Activo' ORDER BY nombre
+      :Consultar en la BD proveedores activos;
+      note right: SELECT id_prov, razon_social FROM Proveedor WHERE estado = 'Activo' ORDER BY razon_social
+      :Mostrar modal <Formulario de Insumo> vacío con combos precargados;
+      if (Clic en ...) then (boton <Cancelar>)
+        :Cerrar modal y mantener vista actual;
+        stop
+      else (boton <Guardar Nuevo>)
+        :Validar btnGuardarNuevo;
+        if (isset(btnGuardarNuevo)) then (False)
+          :Mostrar panel <Error> "Acceso no permitido";
+          stop
+        else (TRUE)
+          :Sanitizar datos del formulario;
+          :Validar que los campos obligatorios no estén vacíos;
+          if (¿Campos incompletos?) then (SI)
+            :Mostrar panel <Error> "El nombre, categoría, unidad, proveedor, stock mínimo y precio de costo son obligatorios";
+            stop
+          else (NO)
+            :Consultar en la BD si ya existe un insumo con ese nombre;
+            note right: SELECT id_prod FROM Producto WHERE nombre = ? AND tipo = 'Insumo'
+            if (¿Nombre ya registrado?) then (SI)
+              :Mostrar panel <Error> "Ya existe un insumo registrado con ese nombre";
+              stop
+            else (NO)
+              :Registrar en la BD el nuevo insumo con stock inicial en cero y estado Activo;
+              note right: INSERT INTO Producto (nombre, descripcion, id_categoria, id_unidad, id_prov, costo_unitario, stock_minimo, stock_fisico, tipo, estado) VALUES (?, ?, ?, ?, ?, ?, ?, 0, 'Insumo', 'Activo')
+              :Mostrar panel <Éxito> "Insumo registrado correctamente";
+              stop
+            endif
+          endif
+        endif
+      endif
+    endif
+
+  case (boton <Editar Insumo>)
+    :Validar btnEditarInsumo;
+    if (isset(btnEditarInsumo)) then (False)
+      :Mostrar panel <Error> "Acceso no permitido";
+      stop
+    else (TRUE)
+      :Sanitizar ID del insumo recibido;
+      :Consultar en la BD el insumo y sus datos;
+      note right: SELECT id_prod, nombre, descripcion, id_categoria, id_unidad, id_prov, costo_unitario, stock_minimo, stock_fisico FROM Producto WHERE id_prod = ? AND tipo = 'Insumo'
+      if (¿Existe insumo?) then (NO)
+        :Mostrar panel <Error> "El insumo solicitado no existe";
+        stop
+      else (SI)
+        :Consultar categorías, unidades y proveedores activos para precargar combos;
+        :Mostrar modal <Formulario de Insumo> con datos precargados y stock actual en sólo lectura;
+        if (Clic en ...) then (boton <Cancelar>)
+          :Cerrar modal y mantener vista actual;
+          stop
+        else (boton <Guardar Cambios>)
+          :Validar btnGuardarCambios;
+          if (isset(btnGuardarCambios)) then (False)
+            :Mostrar panel <Error> "Acceso no permitido";
+            stop
+          else (TRUE)
+            :Sanitizar datos del formulario;
+            :Validar que los campos obligatorios no estén vacíos;
+            if (¿Campos obligatorios incompletos?) then (SI)
+              :Mostrar panel <Error> "El nombre, categoría, unidad, proveedor, stock mínimo y precio de costo son obligatorios";
+              stop
+            else (NO)
+              :Consultar en la BD si el nombre ya pertenece a OTRO insumo;
+              note right: SELECT id_prod FROM Producto WHERE nombre = ? AND tipo = 'Insumo' AND id_prod != ?
+              if (¿Nombre duplicado?) then (SI)
+                :Mostrar panel <Error> "El nombre ya está siendo usado por otro insumo";
+                stop
+              else (NO)
+                :Actualizar datos del insumo en la BD;
+                note right: UPDATE Producto SET nombre = ?, id_categoria = ?, id_unidad = ?, id_prov = ?, costo_unitario = ?, stock_minimo = ? WHERE id_prod = ?
+                :Mostrar panel <Éxito> "Datos del insumo actualizados correctamente";
+                stop
+              endif
+            endif
+          endif
+        endif
+      endif
+    endif
+
+  case (boton <Dar de Baja Insumo>)
+    :Validar btnDarBajaInsumo;
+    if (isset(btnDarBajaInsumo)) then (False)
+      :Mostrar panel <Error> "Acceso no permitido";
+      stop
+    else (TRUE)
+      :Sanitizar ID del insumo recibido;
+      :Mostrar panel <Confirmación> "¿Está seguro de dar de baja este insumo?";
+      if (Clic en ..) then (boton <Cancelar>)
+        :Cerrar confirmación y mantener vista actual;
+        stop
+      else (boton <Aceptar>)
+        :Validar btnAceptar;
+        if (isset(btnAceptar)) then (False)
+          :Mostrar panel <Error> "Acceso no permitido";
+          stop
+        else (TRUE)
+          :Verificar en BD si el insumo existe y está activo;
+          note right: SELECT id_prod FROM Producto WHERE id_prod = ? AND tipo = 'Insumo' AND estado = 'Activo'
+          if (¿Existe insumo?) then (NO)
+            :Mostrar panel <Error> "El insumo solicitado no existe";
+            stop
+          else (SI)
+            :Actualizar en la BD el estado del insumo a 'Inactivo';
+            note right: UPDATE Producto SET estado = 'Inactivo' WHERE id_prod = ?
+            :Mostrar panel <Éxito> "Insumo dado de baja correctamente";
+            stop
+          endif
+        endif
+      endif
+    endif
+
+  endswitch
+endif
+
+@enduml

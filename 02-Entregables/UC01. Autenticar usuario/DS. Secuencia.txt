@@ -1,0 +1,87 @@
+@startuml
+!pragma teoz true
+skinparam sequenceArrowColor #8B0000
+skinparam sequenceLifeLineBorderColor #8B0000
+skinparam sequenceParticipantBorderColor #8B0000
+skinparam sequenceParticipantBackgroundColor #FFFFE0
+skinparam sequenceActorBorderColor #8B0000
+skinparam sequenceGroupBorderColor #8B0000
+skinparam shadowing false
+skinparam DefaultFontName Arial
+
+title DS_Autenticar Usuario (UC01)
+
+actor "Usuario" as usuario
+boundary "CI_FormularioLogin" as b_login
+boundary "CI_PanelPrincipal" as b_panel
+boundary "CI_MensajeSistema" as b_msg
+control "CC_AutenticarUsuarioController" as ctrl
+entity "CE_usuario" as e_usuario
+entity "CE_usuario_rol" as e_usuario_rol
+
+' =================== ARRANQUE (DIRECTO ACTOR -> CONTROLADOR) ===================
+usuario -> ctrl : iniciarLogin(): void
+activate ctrl
+
+ctrl -> b_login : CI_FormularioLoginShow()
+activate b_login
+b_login --> usuario : Muestra FormularioLogin (txtUsername, txtPassword, btnIngresar)
+
+' =================== PROCESO DE AUTENTICACIÓN ===================
+group AUTENTICAR USUARIO
+  usuario -> b_login : ingresarCredenciales(username: String, password: String, btnIngresar: String)
+  b_login -> ctrl : validarBtnIngresar(btnIngresar: String): bool
+
+  ctrl -> ctrl : validarBoton(btnIngresar: String): bool
+
+  break si validarBoton() == false
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> usuario : [Error] Acceso no permitido
+  end
+
+  ctrl -> ctrl : validarCampos(username: String, password: String): int
+
+  break si validarCampos() == 0
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> usuario : [Error] Debe ingresar su usuario y contraseña
+  end
+
+  ctrl -> e_usuario : obtenerUsuarioPorUsername(username: String): Object
+  activate e_usuario
+  e_usuario --> ctrl : datosUsuario
+  deactivate e_usuario
+
+  break si datosUsuario es null
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> usuario : [Error] El usuario ingresado no existe
+  end
+
+  ctrl -> ctrl : verificarPassword(password: String, passwordHash: String): bool
+
+  break si verificarPassword() == false
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> usuario : [Error] Contraseña incorrecta
+  end
+
+  ctrl -> ctrl : verificarEstadoActivo(estado: String): bool
+
+  break si verificarEstadoActivo() == false
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> usuario : [Error] El usuario se encuentra inactivo
+  end
+
+  ctrl -> e_usuario_rol : obtenerRolesUsuario(id_usu: int): List
+  activate e_usuario_rol
+  e_usuario_rol --> ctrl : listadoRoles
+  deactivate e_usuario_rol
+
+  ctrl -> b_panel : CI_PanelPrincipalShow(datosUsuario: Object, listadoRoles: List)
+  activate b_panel
+  b_panel --> usuario : Redirige al Panel Principal según rol
+  deactivate b_panel
+end
+
+deactivate b_login
+deactivate ctrl
+
+@enduml

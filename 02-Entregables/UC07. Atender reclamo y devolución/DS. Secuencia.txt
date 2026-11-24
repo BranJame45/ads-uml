@@ -1,0 +1,160 @@
+@startuml
+!pragma teoz true
+skinparam sequenceArrowColor #8B0000
+skinparam sequenceLifeLineBorderColor #8B0000
+skinparam sequenceParticipantBorderColor #8B0000
+skinparam sequenceParticipantBackgroundColor #FFFFE0
+skinparam sequenceActorBorderColor #8B0000
+skinparam sequenceGroupBorderColor #8B0000
+skinparam shadowing false
+skinparam DefaultFontName Arial
+
+title DS_Atender Reclamo y Devolución (UC07)
+
+actor "Vendedor" as vendedor
+boundary "CI_VentanaAtenderReclamo" as b_ventana
+boundary "CI_FormularioReclamo" as b_form
+boundary "CI_MensajeSistema" as b_msg
+control "CC_AtenderReclamoController" as ctrl
+entity "CE_venta" as e_venta
+entity "CE_detalle_venta" as e_detalle
+entity "CE_reclamo" as e_reclamo
+entity "CE_producto" as e_producto
+
+' =================== ARRANQUE (DIRECTO ACTOR -> CONTROLADOR) ===================
+vendedor -> ctrl : validarBtnAtenderReclamo(btnAtenderReclamo: String): bool
+activate ctrl
+
+ctrl -> ctrl : validarBoton(btnAtenderReclamo: String): bool
+
+break si validarBoton() == false
+  ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+  b_msg --> vendedor : [Error] Acceso no permitido
+end
+
+ctrl -> ctrl : validarRolVendedor(rolUsuario: String): bool
+
+break si validarRolVendedor() == false
+  ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+  b_msg --> vendedor : [Error] Privilegios insuficientes
+end
+
+ctrl -> b_ventana : CI_VentanaAtenderReclamoShow()
+activate b_ventana
+b_ventana --> vendedor : Muestra VentanaAtenderReclamo con buscador vacío
+
+' =================== RAMA BUSCAR VENTA ===================
+group BUSCAR VENTA
+  vendedor -> b_ventana : clickBuscarVenta(txtComprobante: String, btnBuscarVenta: String)
+  b_ventana -> ctrl : buscarVenta(num_comprobante: String): void
+
+  ctrl -> ctrl : validarCampoBusqueda(num_comprobante: String): bool
+
+  break si validarCampoBusqueda() == false
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> vendedor : [Error] Debe ingresar un número de comprobante para buscar
+  end
+
+  ctrl -> e_venta : obtenerVentaPorComprobante(num_comprobante: String): Object
+  activate e_venta
+  e_venta --> ctrl : datosVenta
+  deactivate e_venta
+
+  break si datosVenta es null
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> vendedor : [Aviso] No se encontró una venta completada con ese comprobante
+  end
+
+  ctrl -> e_detalle : obtenerDetalleVenta(id_venta: int): List
+  activate e_detalle
+  e_detalle --> ctrl : detalleVenta
+  deactivate e_detalle
+
+  ctrl -> b_ventana : CI_VentanaAtenderReclamoShow(datosVenta: Object, detalleVenta: List)
+  b_ventana --> vendedor : Muestra datos de la venta y detalle de productos
+end
+
+' =================== RAMA REGISTRAR RECLAMO ===================
+group REGISTRAR RECLAMO Y DEVOLUCIÓN
+  vendedor -> b_ventana : clickRegistrarReclamo(btnRegistrarReclamo: String)
+  b_ventana -> ctrl : validarBtnRegistrarReclamo(btnRegistrarReclamo: String): bool
+
+  ctrl -> ctrl : validarBoton(btnRegistrarReclamo: String): bool
+
+  break si validarBoton() == false
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> vendedor : [Error] Acceso no permitido
+  end
+
+  ctrl -> ctrl : validarVentaSeleccionada(id_venta: int): bool
+
+  break si validarVentaSeleccionada() == false
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> vendedor : [Error] Debe buscar y seleccionar una venta primero
+  end
+
+  ctrl -> b_form : CI_FormularioReclamoShow(datosVenta: Object, detalleVenta: List)
+  activate b_form
+  b_form --> vendedor : Muestra FormularioReclamo con productos de la venta
+
+  alt el usuario presiona btnCancelar
+    vendedor -> b_form : clickCancelar(btnCancelar: String)
+    b_form --> vendedor : Cerrar modal sin registrar cambios
+  else el usuario presiona btnConfirmarReclamo
+    vendedor -> b_form : ingresarDatos(id_prod: int, cantidad: int, motivo: String, tipo_resolucion: String, btnConfirmarReclamo: String)
+    b_form -> ctrl : validarBtnConfirmarReclamo(btnConfirmarReclamo: String): bool
+
+    ctrl -> ctrl : validarBoton(btnConfirmarReclamo: String): bool
+
+    break si validarBoton() == false
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> vendedor : [Error] Acceso no permitido
+    end
+
+    ctrl -> ctrl : validarCamposReclamo(id_prod: int, cantidad: int, motivo: String, tipo_resolucion: String): int
+
+    break si validarCamposReclamo() == 0
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> vendedor : [Error] Debe seleccionar producto, ingresar cantidad, motivo y tipo de resolución
+    end
+
+    ctrl -> ctrl : validarCantidadReclamo(cantidad: int, cantidadVendida: int): bool
+
+    break si validarCantidadReclamo() == false
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> vendedor : [Error] La cantidad debe ser mayor a cero y no superar lo vendido
+    end
+
+    ctrl -> ctrl : calcularMontoDevuelto(tipo_resolucion: String, cantidad: int, precio_unitario: double): double
+
+    ctrl -> e_reclamo : registrarReclamo(id_venta: int, id_prod: int, id_usuario: int, motivo: String, cantidad: int, tipo_resolucion: String, monto_devuelto: double): int
+    activate e_reclamo
+    e_reclamo --> ctrl : id_reclamo
+    deactivate e_reclamo
+
+    ctrl -> e_producto : sumarStockFisico(id_prod: int, cantidad: int): bool
+    activate e_producto
+    e_producto --> ctrl : confirmacionStock
+    deactivate e_producto
+
+    opt si tipo_resolucion == 'Cambio de producto'
+      ctrl -> e_producto : descontarStockFisico(id_prod: int, cantidad: int): bool
+      activate e_producto
+      e_producto --> ctrl : confirmacionReemplazo
+      deactivate e_producto
+    end
+
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> vendedor : [Éxito] Reclamo y devolución registrados correctamente
+
+    ctrl -> b_ventana : CI_VentanaAtenderReclamoShow()
+    b_ventana --> vendedor : Muestra VentanaAtenderReclamo
+  end
+
+  deactivate b_form
+end
+
+deactivate b_ventana
+deactivate ctrl
+
+@enduml

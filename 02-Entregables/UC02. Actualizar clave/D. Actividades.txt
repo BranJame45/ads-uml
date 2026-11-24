@@ -1,0 +1,61 @@
+@startuml
+scale 0.7
+skinparam ActivityBackgroundColor #FFFFE0
+skinparam ActivityBorderColor #8B0000
+skinparam ArrowColor #8B0000
+skinparam PartitionBorderColor #000000
+skinparam shadowing false
+skinparam DefaultFontName Arial
+
+title Diagrama de Actividades - UC02: Actualizar Clave
+
+|Usuario|
+start
+:Hacer clic en "Actualizar Clave";
+
+|Sistema|
+:Validar btnActualizarClave;
+if (isset(btnActualizarClave)) then (False)
+  :Mostrar panel <Error> "Acceso no permitido";
+  stop
+else (TRUE)
+  :Mostrar formulario <Formulario Actualizar Clave> con campos contraseña actual y nueva contraseña;
+  if (Clic en ..) then (boton <Cancelar>)
+    :Cerrar formulario y mantener vista actual;
+    stop
+  else (boton <Guardar>)
+    :Validar btnGuardar;
+    if (isset(btnGuardar)) then (False)
+      :Mostrar panel <Error> "Acceso no permitido";
+      stop
+    else (TRUE)
+      :Sanitizar contraseña actual y nueva contraseña;
+      :Validar que los campos obligatorios no estén vacíos;
+      if (¿Campos vacíos?) then (SI)
+        :Mostrar panel <Error> "Debe completar la contraseña actual y la nueva contraseña";
+        stop
+      else (NO)
+        :Validar que la nueva contraseña cumpla la longitud mínima de seguridad;
+        if (¿Longitud mínima válida?) then (NO)
+          :Mostrar panel <Error> "La nueva contraseña debe tener al menos 8 caracteres";
+          stop
+        else (SI)
+          :Consultar en la BD la contraseña actual del usuario activo en sesión;
+          note right: SELECT password FROM Usuario WHERE id_usu = ? AND estado = 'Activo'
+          if (¿Contraseña actual correcta?) then (NO)
+            :Mostrar panel <Error> "La contraseña actual ingresada es incorrecta";
+            stop
+          else (SI)
+            :Encriptar la nueva contraseña;
+            :Actualizar en la BD la contraseña del usuario;
+            note right: UPDATE Usuario SET password = ? WHERE id_usu = ?
+            :Mostrar panel <Éxito> "Contraseña actualizada correctamente";
+            stop
+          endif
+        endif
+      endif
+    endif
+  endif
+endif
+
+@enduml

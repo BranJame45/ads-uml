@@ -40,7 +40,8 @@ class "CI_FormularioProducto" as b_form <<Frontera>> {
   + txtPrecioVenta
   + txtStockMinimo
   + lblStockActual
-  + btnGuardar
+  + btnGuardarNuevo
+  + btnGuardarCambios
   + btnCancelar
   --
   + CI_FormularioProductoShow()
@@ -77,7 +78,8 @@ class "CC_GestionarProductoController" as ctrl <<Controlador>> {
   + buscarProductos()
   + validarCampoBusqueda()
   + validarBtnNuevoProducto()
-  + validarBtnGuardar()
+  + validarBtnGuardarNuevo()
+  + validarBtnGuardarCambios()
   + validarCampos()
   + validarBtnEditarProducto()
   + validarBtnDarBajaProducto()
@@ -147,7 +149,7 @@ ctrl        --> e_categoria : 5b. obtenerCategoriasActivas()
 ctrl        --> e_unidad    : 6b. obtenerUnidadesActivas()
 ctrl        --> b_form      : 7b. CI_FormularioProductoShow(listadoCategorias, listadoUnidades) vacío
 a_encargado --> b_form      : 8b-cancel. [alt-Cancelar] clickCancelar(btnCancelar) → cierra modal
-b_form      --> ctrl        : 8b. [else-Guardar] ingresarDatos(..., btnGuardar)
+b_form      --> ctrl        : 8b. [else-GuardarNuevo] ingresarDatos(..., btnGuardarNuevo)
 ctrl        --> e_producto  : 9b. verificarNombreDuplicado(nombre)
 ctrl        --> e_producto  : 10b. registrarProducto(..., id_categoria, id_unidad, ...) con stock_fisico=0 y estado='Activo'
 ctrl        --> e_producto  : 11b. obtenerProductosActivos()
@@ -160,7 +162,7 @@ ctrl        --> e_categoria : 6c. obtenerCategoriasActivas()
 ctrl        --> e_unidad    : 7c. obtenerUnidadesActivas()
 ctrl        --> b_form      : 8c. CI_FormularioProductoShow(datosProducto, listadoCategorias, listadoUnidades) con stock en sólo lectura
 a_encargado --> b_form      : 9c-cancel. [alt-Cancelar] clickCancelar(btnCancelar) → cierra modal
-b_form      --> ctrl        : 9c. [else-Guardar] modificarDatos(..., btnGuardar)
+b_form      --> ctrl        : 9c. [else-GuardarCambios] modificarDatos(..., btnGuardarCambios)
 ctrl        --> e_producto  : 10c. verificarNombreEnOtroProducto(nombre, id_prod)
 ctrl        --> e_producto  : 11c. actualizarProducto(id_prod, nombre, id_categoria, id_unidad, precio_venta, stock_minimo)
 ctrl        --> e_producto  : 12c. obtenerProductosActivos()

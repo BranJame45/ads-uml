@@ -1,0 +1,158 @@
+@startuml
+skinparam ClassBackgroundColor #FFFFE0
+skinparam ClassBorderColor #8B0000
+skinparam ArrowColor #8B0000
+skinparam ClassStereotypeFontColor #8B0000
+skinparam ClassHeaderBackgroundColor #F5E6E6
+skinparam shadowing false
+skinparam DefaultFontName Arial
+
+title DO_Registrar Ingreso de Mercancía (UC11)
+
+' ============================================================
+' AGENTE
+' ============================================================
+class "Encargado de Almacén" as a_encargado <<Agente>>
+
+' ============================================================
+' FRONTERAS
+' ============================================================
+class "CI_VentanaGestionarIngreso" as b_ventana <<Frontera>> {
+  + historialIngresos
+  + btnNuevoIngreso
+  --
+  + CI_VentanaGestionarIngresoShow()
+  + clickNuevoIngreso()
+}
+
+class "CI_FormularioIngreso" as b_form <<Frontera>> {
+  + txtBuscarProveedor
+  + btnBuscarProveedor
+  + lblProveedorSeleccionado
+  + txtFecha
+  + txtNumComprobanteProv
+  + cboItem
+  + txtCantidad
+  + txtCostoUnitario
+  + btnAgregarItem
+  + listadoDetalle
+  + btnEliminarItem
+  + lblCostoTotal
+  + btnConfirmarIngreso
+  + btnCancelar
+  --
+  + CI_FormularioIngresoShow()
+  + clickBuscarProveedor()
+  + clickAgregarItem()
+  + clickEliminarItem()
+  + clickCancelar()
+  + ingresarDatos()
+}
+
+class "CI_MensajeSistema" as b_msg <<Frontera>> {
+  + mensaje : String
+  + descripcion : String
+  + link : String
+  --
+  + CI_MensajeSistemaShow()
+}
+
+' ============================================================
+' CONTROLADOR
+' ============================================================
+class "CC_RegistrarIngresoController" as ctrl <<Controlador>> {
+  + validarBtnRegistrarIngreso()
+  + validarBoton()
+  + validarRolEncargadoAlmacen()
+  + validarBtnNuevoIngreso()
+  + buscarProveedor()
+  + validarBtnAgregarItem()
+  + validarCantidadYCosto()
+  + validarBtnEliminarItem()
+  + validarBtnConfirmarIngreso()
+  + validarDatosIngreso()
+}
+
+' ============================================================
+' ENTIDADES
+' ============================================================
+class "CE_ingreso_mercancia" as e_ingreso <<Entidad>> {
+  - id_ingreso : INT
+  - id_prov : INT (FK)
+  - id_usuario : INT (FK)
+  - fecha : DATETIME
+  - num_ingreso : VARCHAR(20)
+  - num_comprobante_prov : VARCHAR(30)
+  - costo_total : DECIMAL(10,2)
+  - estado : VARCHAR(15)
+  --
+  + obtenerHistorialIngresos()
+  + obtenerCorrelativoIngreso()
+  + registrarIngreso()
+}
+
+class "CE_detalle_ingreso" as e_detalle <<Entidad>> {
+  - id_detalle_ingreso : INT
+  - id_ingreso : INT (FK)
+  - id_prod : INT (FK)
+  - cantidad : DECIMAL(10,2)
+  - costo_unitario : DECIMAL(10,2)
+  - subtotal : DECIMAL(10,2)
+  --
+  + registrarDetalleIngreso()
+}
+
+class "CE_proveedor" as e_proveedor <<Entidad>> {
+  - id_prov : INT
+  - razon_social : VARCHAR(100)
+  - ruc : VARCHAR(11)
+  - estado : VARCHAR(10)
+  --
+  + obtenerProveedoresFiltrados()
+}
+
+class "CE_producto" as e_producto <<Entidad>> {
+  - id_prod : INT
+  - nombre : VARCHAR(100)
+  - tipo : VARCHAR(20)
+  - costo_unitario : DECIMAL(10,2)
+  - stock_fisico : INT
+  - estado : VARCHAR(10)
+  --
+  + obtenerItemsActivos()
+  + sumarStockFisico()
+}
+
+' ============================================================
+' RELACIONES NUMERADAS (orden del DS, priorizando camino negativo)
+' ============================================================
+a_encargado --> ctrl        : 1. validarBtnRegistrarIngreso(btnRegistrarIngreso)
+ctrl        --> e_ingreso   : 2. obtenerHistorialIngresos()
+ctrl        --> b_ventana   : 3. CI_VentanaGestionarIngresoShow(historialIngresos)
+
+b_ventana   --> ctrl        : 4. [NUEVO INGRESO] Envía btnNuevoIngreso
+ctrl        --> e_producto  : 5. obtenerItemsActivos()
+ctrl        --> b_form      : 6. CI_FormularioIngresoShow(listadoItems)
+
+b_form      --> ctrl        : 7a. [BUSCAR PROVEEDOR] buscarProveedor(textoBusqueda)
+ctrl        --> e_proveedor : 8a. obtenerProveedoresFiltrados(textoBusqueda)
+ctrl        --> b_form      : 9a. CI_FormularioIngresoShow(datosProveedor)
+
+b_form      --> ctrl        : 7b. [AGREGAR ÍTEM] Envía btnAgregarItem(id_prod, cantidad, costo_unitario)
+ctrl        --> b_form      : 8b. CI_FormularioIngresoShow(detalleActualizado)
+
+b_form      --> ctrl        : 7c. [ELIMINAR ÍTEM] Envía btnEliminarItem(id_prod)
+ctrl        --> b_form      : 8c. CI_FormularioIngresoShow(detalleActualizado)
+
+a_encargado --> b_form      : 7d-cancel. [alt-Cancelar] clickCancelar(btnCancelar) → limpia sesión y cierra modal
+b_form      --> ctrl        : 7d. [else-Confirmar] ingresarDatos(id_prov, num_comprobante_prov, btnConfirmarIngreso)
+ctrl        --> e_ingreso   : 8d. obtenerCorrelativoIngreso()
+ctrl        --> e_ingreso   : 9d. registrarIngreso(id_prov, id_usuario, num_ingreso, num_comprobante_prov, costo_total)
+ctrl        --> e_detalle   : 10d. registrarDetalleIngreso(id_ingreso, id_prod, cantidad, costo_unitario, subtotal)
+ctrl        --> e_producto  : 11d. sumarStockFisico(id_prod, cantidad)
+ctrl        --> e_ingreso   : 12d. obtenerHistorialIngresos()
+ctrl        --> b_ventana   : 13d. CI_VentanaGestionarIngresoShow(historialIngresos)
+
+ctrl        --> b_msg       : * CI_MensajeSistemaShow() en éxito, aviso o validación fallida
+
+@enduml

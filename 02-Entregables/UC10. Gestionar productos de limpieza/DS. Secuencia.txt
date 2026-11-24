@@ -98,11 +98,11 @@ group AGREGAR PRODUCTO
   alt el usuario presiona btnCancelar
     encargado -> b_form : clickCancelar(btnCancelar: String)
     b_form --> encargado : Cerrar modal y mantener vista actual
-  else el usuario presiona btnGuardar
-    encargado -> b_form : ingresarDatos(nombre: String, descripcion: String, id_categoria: int, id_unidad: int, precio_venta: double, stock_minimo: int, btnGuardar: String)
-    b_form -> ctrl : validarBtnGuardar(btnGuardar: String): bool
+  else el usuario presiona btnGuardarNuevo
+    encargado -> b_form : ingresarDatos(nombre: String, descripcion: String, id_categoria: int, id_unidad: int, precio_venta: double, stock_minimo: int, btnGuardarNuevo: String)
+    b_form -> ctrl : validarBtnGuardarNuevo(btnGuardarNuevo: String): bool
 
-    ctrl -> ctrl : validarBoton(btnGuardar: String): bool
+    ctrl -> ctrl : validarBoton(btnGuardarNuevo: String): bool
 
     break si validarBoton() == false
       ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
@@ -185,11 +185,11 @@ group EDITAR PRODUCTO
   alt el usuario presiona btnCancelar
     encargado -> b_form : clickCancelar(btnCancelar: String)
     b_form --> encargado : Cerrar modal y mantener vista actual
-  else el usuario presiona btnGuardar
-    encargado -> b_form : modificarDatos(nombre: String, id_categoria: int, id_unidad: int, precio_venta: double, stock_minimo: int, btnGuardar: String)
-    b_form -> ctrl : validarBtnGuardar(btnGuardar: String): bool
+  else el usuario presiona btnGuardarCambios
+    encargado -> b_form : modificarDatos(nombre: String, id_categoria: int, id_unidad: int, precio_venta: double, stock_minimo: int, btnGuardarCambios: String)
+    b_form -> ctrl : validarBtnGuardarCambios(btnGuardarCambios: String): bool
 
-    ctrl -> ctrl : validarBoton(btnGuardar: String): bool
+    ctrl -> ctrl : validarBoton(btnGuardarCambios: String): bool
 
     break si validarBoton() == false
       ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)

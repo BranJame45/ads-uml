@@ -1,0 +1,106 @@
+@startuml
+scale 0.6
+skinparam ActivityBackgroundColor #FFFFE0
+skinparam ActivityBorderColor #8B0000
+skinparam ArrowColor #8B0000
+skinparam PartitionBorderColor #000000
+skinparam shadowing false
+skinparam DefaultFontName Arial
+
+title Diagrama de Actividades - UC03: Recuperar Clave
+
+|Usuario|
+start
+:Hacer clic en "¿Olvidaste tu contraseña?";
+
+|Sistema|
+:Validar btnRecuperarClave;
+if (isset(btnRecuperarClave)) then (False)
+  :Mostrar panel <Error> "Acceso no permitido";
+  stop
+else (TRUE)
+  :Mostrar formulario <Formulario Buscar Usuario> con campo username y botones [Continuar] y [Cancelar];
+  if (Clic en ..) then (boton <Cancelar>)
+    :Cerrar formulario y mantener vista actual;
+    stop
+  else (boton <Continuar>)
+    :Validar btnBuscarUsuario;
+    if (isset(btnBuscarUsuario)) then (False)
+      :Mostrar panel <Error> "Acceso no permitido";
+      stop
+    else (TRUE)
+      :Sanitizar username ingresado;
+      :Validar que el campo username no esté vacío;
+      if (¿Campo vacío?) then (SI)
+        :Mostrar panel <Error> "Debe ingresar su nombre de usuario";
+        stop
+      else (NO)
+        :Consultar en la BD los datos y pregunta secreta del usuario;
+        note right: SELECT id_usu, username, pregunta_secreta, estado FROM Usuario WHERE username = ?
+        if (¿Existe usuario?) then (NO)
+          :Mostrar panel <Error> "El usuario ingresado no existe";
+          stop
+        else (SI)
+          :Verificar si el usuario se encuentra activo;
+          if (¿Estado == 'Activo'?) then (NO)
+            :Mostrar panel <Error> "El usuario se encuentra inactivo";
+            stop
+          else (SI)
+            :Mostrar formulario <Formulario Pregunta Secreta> con la pregunta del usuario, campo respuesta y botones [Verificar Respuesta] y [Cancelar];
+            if (Clic en ..) then (boton <Cancelar>)
+              :Cerrar formulario y mantener vista actual;
+              stop
+            else (boton <Verificar Respuesta>)
+              :Validar btnVerificarRespuesta;
+              if (isset(btnVerificarRespuesta)) then (False)
+                :Mostrar panel <Error> "Acceso no permitido";
+                stop
+              else (TRUE)
+                :Sanitizar respuesta secreta ingresada;
+                :Validar que el campo respuesta no esté vacío;
+                if (¿Respuesta vacía?) then (SI)
+                  :Mostrar panel <Error> "Debe ingresar su respuesta secreta";
+                  stop
+                else (NO)
+                  :Verificar en la BD que la respuesta secreta coincida con la registrada para el usuario;
+                  note right: SELECT id_usu FROM Usuario WHERE id_usu = ? AND respuesta_secreta = ?
+                  if (¿Respuesta correcta?) then (NO)
+                    :Mostrar panel <Error> "La respuesta secreta ingresada es incorrecta";
+                    stop
+                  else (SI)
+                    :Mostrar formulario <Formulario Nueva Clave> con campo nueva contraseña y botones [Guardar Clave] y [Cancelar];
+                    if (Clic en ..) then (boton <Cancelar>)
+                      :Cerrar formulario y mantener vista actual;
+                      stop
+                    else (boton <Guardar Clave>)
+                      :Validar btnGuardarClave;
+                      if (isset(btnGuardarClave)) then (False)
+                        :Mostrar panel <Error> "Acceso no permitido";
+                        stop
+                      else (TRUE)
+                        :Sanitizar nueva contraseña;
+                        :Validar que la nueva contraseña cumpla la longitud mínima (8 caracteres);
+                        if (¿Longitud válida?) then (NO)
+                          :Mostrar panel <Error> "La nueva contraseña debe tener al menos 8 caracteres";
+                          stop
+                        else (SI)
+                          :Encriptar la nueva contraseña;
+                          :Actualizar la contraseña en la BD;
+                          note right: UPDATE Usuario SET password = ? WHERE id_usu = ?
+                          :Mostrar panel <Éxito> "Contraseña restablecida correctamente";
+                          stop
+                        endif
+                      endif
+                    endif
+                  endif
+                endif
+              endif
+            endif
+          endif
+        endif
+      endif
+    endif
+  endif
+endif
+
+@enduml

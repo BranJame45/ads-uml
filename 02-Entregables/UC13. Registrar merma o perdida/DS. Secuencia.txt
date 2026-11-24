@@ -1,0 +1,134 @@
+@startuml
+!pragma teoz true
+skinparam sequenceArrowColor #8B0000
+skinparam sequenceLifeLineBorderColor #8B0000
+skinparam sequenceParticipantBorderColor #8B0000
+skinparam sequenceParticipantBackgroundColor #FFFFE0
+skinparam sequenceActorBorderColor #8B0000
+skinparam sequenceGroupBorderColor #8B0000
+skinparam shadowing false
+skinparam DefaultFontName Arial
+
+title DS_Registrar Merma o Pérdida (UC13)
+
+actor "Encargado de Almacén" as encargado
+boundary "CI_VentanaRegistrarMerma" as b_ventana
+boundary "CI_MensajeSistema" as b_msg
+control "CC_RegistrarMermaController" as ctrl
+entity "CE_producto" as e_producto
+entity "CE_merma" as e_merma
+
+' =================== ARRANQUE (DIRECTO ACTOR -> CONTROLADOR) ===================
+encargado -> ctrl : validarBtnRegistrarMerma(btnRegistrarMerma: String): bool
+activate ctrl
+
+ctrl -> ctrl : validarBoton(btnRegistrarMerma: String): bool
+
+break si validarBoton() == false
+  ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+  b_msg --> encargado : [Error] Acceso no permitido
+end
+
+ctrl -> ctrl : validarRolEncargadoAlmacen(rolUsuario: String): bool
+
+break si validarRolEncargadoAlmacen() == false
+  ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+  b_msg --> encargado : [Error] Privilegios insuficientes
+end
+
+ctrl -> b_ventana : CI_VentanaRegistrarMermaShow()
+activate b_ventana
+b_ventana --> encargado : Muestra VentanaRegistrarMerma con selector de tipo, buscador y campos deshabilitados
+
+' =================== RAMA BUSCAR ÍTEM ===================
+group BUSCAR ÍTEM
+  encargado -> b_ventana : clickBuscarItem(cboTipoItem: String, txtBuscarItem: String, btnBuscarItem: String)
+  b_ventana -> ctrl : buscarItem(tipo: String, textoBusqueda: String): void
+
+  ctrl -> ctrl : validarTipoYBusqueda(tipo: String, textoBusqueda: String): bool
+
+  break si validarTipoYBusqueda() == false
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> encargado : [Error] Debe seleccionar el tipo de ítem e ingresar un nombre o código
+  end
+
+  ctrl -> e_producto : buscarItemPorTipo(tipo: String, textoBusqueda: String): Object
+  activate e_producto
+  e_producto --> ctrl : datosItem
+  deactivate e_producto
+
+  break si datosItem es null
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> encargado : [Aviso] Ítem no encontrado
+  end
+
+  ctrl -> b_ventana : CI_VentanaRegistrarMermaShow(datosItem: Object)
+  b_ventana --> encargado : Muestra tarjeta del ítem y habilita cantidad y motivo
+end
+
+' =================== RAMA CANCELAR O CONFIRMAR MERMA ===================
+group CONFIRMAR O CANCELAR MERMA
+  alt el usuario presiona btnCancelar
+    encargado -> b_ventana : clickCancelar(btnCancelar: String)
+    b_ventana --> encargado : Limpia variables temporales de sesión y redirecciona sin afectar stock
+  else el usuario presiona btnConfirmarMerma
+    encargado -> b_ventana : ingresarDatos(cantidad: double, motivo: String, btnConfirmarMerma: String)
+    b_ventana -> ctrl : validarBtnConfirmarMerma(btnConfirmarMerma: String): bool
+
+    ctrl -> ctrl : validarBoton(btnConfirmarMerma: String): bool
+
+    break si validarBoton() == false
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> encargado : [Error] Acceso no permitido
+    end
+
+    ctrl -> ctrl : validarItemEnSesion(id_prod: int): bool
+
+    break si validarItemEnSesion() == false
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> encargado : [Error] Debe buscar y seleccionar un ítem antes de confirmar
+    end
+
+    ctrl -> ctrl : validarCantidadYMotivo(cantidad: double, motivo: String): bool
+
+    break si validarCantidadYMotivo() == false
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> encargado : [Error] Debe ingresar una cantidad mayor a cero y seleccionar un motivo
+    end
+
+    ctrl -> e_producto : obtenerStockYCosto(id_prod: int): Object
+    activate e_producto
+    e_producto --> ctrl : stockYCosto
+    deactivate e_producto
+
+    ctrl -> ctrl : validarStockDisponible(cantidad: double, stock_fisico: double): bool
+
+    break si validarStockDisponible() == false
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> encargado : [Error] La cantidad de merma no puede superar el stock existente
+    end
+
+    ctrl -> ctrl : calcularCostoEstimado(cantidad: double, costo_unitario: double): double
+
+    ctrl -> e_merma : registrarMerma(id_prod: int, id_usuario: int, cantidad: double, motivo: String, costo_estimado: double): int
+    activate e_merma
+    e_merma --> ctrl : id_merma
+    deactivate e_merma
+
+    ctrl -> e_producto : descontarStockFisico(id_prod: int, cantidad: double): bool
+    activate e_producto
+    e_producto --> ctrl : confirmacionStock
+    deactivate e_producto
+
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> encargado : [Éxito] Merma registrada y stock actualizado correctamente
+
+    ctrl -> b_ventana : CI_VentanaRegistrarMermaShow()
+    b_ventana --> encargado : Muestra VentanaRegistrarMerma limpia
+  end
+end
+
+deactivate b_ventana
+deactivate ctrl
+
+@enduml

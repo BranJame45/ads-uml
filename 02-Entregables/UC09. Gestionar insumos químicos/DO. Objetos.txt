@@ -1,0 +1,189 @@
+@startuml
+skinparam ClassBackgroundColor #FFFFE0
+skinparam ClassBorderColor #8B0000
+skinparam ArrowColor #8B0000
+skinparam ClassStereotypeFontColor #8B0000
+skinparam ClassHeaderBackgroundColor #F5E6E6
+skinparam shadowing false
+skinparam DefaultFontName Arial
+
+title DO_Gestionar Insumos Químicos (UC09)
+
+' ============================================================
+' AGENTE
+' ============================================================
+class "Encargado de Almacén" as a_encargado <<Agente>>
+
+' ============================================================
+' FRONTERAS
+' ============================================================
+class "CI_VentanaGestionarInsumo" as b_ventana <<Frontera>> {
+  + listadoInsumos
+  + txtBuscador
+  + btnBuscar
+  + btnNuevoInsumo
+  + btnEditarInsumo
+  + btnDarBajaInsumo
+  --
+  + CI_VentanaGestionarInsumoShow()
+  + clickBuscar()
+  + clickNuevoInsumo()
+  + clickEditarInsumo()
+  + clickDarBajaInsumo()
+}
+
+class "CI_FormularioInsumo" as b_form <<Frontera>> {
+  + txtNombre
+  + txtDescripcion
+  + cboCategoria
+  + cboUnidad
+  + cboProveedor
+  + txtCostoUnitario
+  + txtStockMinimo
+  + lblStockActual
+  + btnGuardarNuevo
+  + btnGuardarCambios
+  + btnCancelar
+  --
+  + CI_FormularioInsumoShow()
+  + clickCancelar()
+  + ingresarDatos()
+  + modificarDatos()
+}
+
+class "CI_MensajeConfirmacion" as b_confirm <<Frontera>> {
+  + mensaje : String
+  + btnAceptar
+  + btnCancelar
+  --
+  + CI_MensajeConfirmacionShow()
+  + clickCancelar()
+  + clickAceptar()
+}
+
+class "CI_MensajeSistema" as b_msg <<Frontera>> {
+  + mensaje : String
+  + descripcion : String
+  + link : String
+  --
+  + CI_MensajeSistemaShow()
+}
+
+' ============================================================
+' CONTROLADOR
+' ============================================================
+class "CC_GestionarInsumoController" as ctrl <<Controlador>> {
+  + validarBtnGestionarInsumos()
+  + validarBoton()
+  + validarRolEncargadoAlmacen()
+  + buscarInsumos()
+  + validarCampoBusqueda()
+  + validarBtnNuevoInsumo()
+  + validarBtnGuardarNuevo()
+  + validarCampos()
+  + validarBtnEditarInsumo()
+  + validarBtnGuardarCambios()
+  + validarBtnDarBajaInsumo()
+  + validarBtnAceptar()
+}
+
+' ============================================================
+' ENTIDADES
+' ============================================================
+class "CE_producto" as e_producto <<Entidad>> {
+  - id_prod : INT
+  - nombre : VARCHAR(100)
+  - descripcion : TEXT
+  - id_categoria : INT (FK)
+  - id_unidad : INT (FK)
+  - id_prov : INT (FK)
+  - costo_unitario : DECIMAL(10,2)
+  - stock_minimo : INT
+  - stock_fisico : INT
+  - tipo : VARCHAR(20)
+  - estado : VARCHAR(10)
+  --
+  + obtenerInsumosActivos()
+  + obtenerInsumosFiltrados()
+  + verificarNombreInsumoDuplicado()
+  + registrarInsumo()
+  + obtenerDatosInsumo()
+  + verificarNombreEnOtroInsumo()
+  + actualizarInsumo()
+  + verificarExistenciaInsumoActiva()
+  + desactivarInsumo()
+}
+
+class "CE_categoria" as e_categoria <<Entidad>> {
+  - id_categoria : INT
+  - nombre : VARCHAR(50)
+  - estado : VARCHAR(10)
+  --
+  + obtenerCategoriasActivas()
+}
+
+class "CE_unidad_medida" as e_unidad <<Entidad>> {
+  - id_unidad : INT
+  - nombre : VARCHAR(30)
+  - abreviatura : VARCHAR(10)
+  - estado : VARCHAR(10)
+  --
+  + obtenerUnidadesActivas()
+}
+
+class "CE_proveedor" as e_proveedor <<Entidad>> {
+  - id_prov : INT
+  - razon_social : VARCHAR(100)
+  - estado : VARCHAR(10)
+  --
+  + obtenerProveedoresActivos()
+}
+
+' ============================================================
+' RELACIONES NUMERADAS (orden del DS, priorizando camino negativo)
+' ============================================================
+a_encargado --> ctrl        : 1. validarBtnGestionarInsumos(btnGestionarInsumos)
+ctrl        --> e_producto  : 2. obtenerInsumosActivos()
+ctrl        --> b_ventana   : 3. CI_VentanaGestionarInsumoShow(listadoInsumos)
+
+b_ventana   --> ctrl        : 4a. [BUSCAR] buscarInsumos(textoBusqueda)
+ctrl        --> e_producto  : 5a. obtenerInsumosFiltrados(textoBusqueda)
+ctrl        --> b_ventana   : 6a. CI_VentanaGestionarInsumoShow(listadoFiltrado)
+
+b_ventana   --> ctrl        : 4b. [AGREGAR] Envía btnNuevoInsumo
+ctrl        --> e_categoria : 5b. obtenerCategoriasActivas()
+ctrl        --> e_unidad    : 6b. obtenerUnidadesActivas()
+ctrl        --> e_proveedor : 7b. obtenerProveedoresActivos()
+ctrl        --> b_form      : 8b. CI_FormularioInsumoShow(...) vacío
+a_encargado --> b_form      : 9b-cancel. [alt-Cancelar] clickCancelar(btnCancelar) → cierra modal
+b_form      --> ctrl        : 9b. [else-GuardarNuevo] ingresarDatos(..., btnGuardarNuevo)
+ctrl        --> e_producto  : 10b. verificarNombreInsumoDuplicado(nombre)
+ctrl        --> e_producto  : 11b. registrarInsumo(..., id_categoria, id_unidad, id_prov, ...)
+ctrl        --> e_producto  : 12b. obtenerInsumosActivos()
+ctrl        --> b_ventana   : 13b. CI_VentanaGestionarInsumoShow(listadoInsumos)
+
+b_ventana   --> ctrl        : 4c. [EDITAR] Envía btnEditarInsumo
+ctrl        --> e_producto  : 5c. obtenerDatosInsumo(id_prod)
+ctrl        --> e_categoria : 6c. obtenerCategoriasActivas()
+ctrl        --> e_unidad    : 7c. obtenerUnidadesActivas()
+ctrl        --> e_proveedor : 8c. obtenerProveedoresActivos()
+ctrl        --> b_form      : 9c. CI_FormularioInsumoShow(datosInsumo, ...) con stock en sólo lectura
+a_encargado --> b_form      : 10c-cancel. [alt-Cancelar] clickCancelar(btnCancelar) → cierra modal
+b_form      --> ctrl        : 10c. [else-GuardarCambios] modificarDatos(..., btnGuardarCambios)
+ctrl        --> e_producto  : 11c. verificarNombreEnOtroInsumo(nombre, id_prod)
+ctrl        --> e_producto  : 12c. actualizarInsumo(id_prod, ...)
+ctrl        --> e_producto  : 13c. obtenerInsumosActivos()
+ctrl        --> b_ventana   : 14c. CI_VentanaGestionarInsumoShow(listadoInsumos)
+
+b_ventana   --> ctrl        : 4d. [DAR DE BAJA] Envía btnDarBajaInsumo
+ctrl        --> b_confirm   : 5d. CI_MensajeConfirmacionShow()
+a_encargado --> b_confirm   : 6d-cancel. [alt-Cancelar] clickCancelar(btnCancelar) → cierra confirmación
+b_confirm   --> ctrl        : 6d. [else-Aceptar] Envía btnAceptar
+ctrl        --> e_producto  : 7d. verificarExistenciaInsumoActiva(id_prod)
+ctrl        --> e_producto  : 8d. desactivarInsumo(id_prod)
+ctrl        --> e_producto  : 9d. obtenerInsumosActivos()
+ctrl        --> b_ventana   : 10d. CI_VentanaGestionarInsumoShow(listadoInsumos)
+
+ctrl        --> b_msg       : * CI_MensajeSistemaShow() en éxito o validación fallida
+
+@enduml

@@ -120,7 +120,8 @@ Reglas de robustez para las flechas: en el arranque `actor→control` (`1. valid
 - [ ] **Cada método está en la clase que lo RECIBE en el diagrama de secuencia, con el nombre idéntico.** El controlador solo tiene `validar*` (y coordinación sin `isset` como `buscar*`); las entidades tienen sus `obtener/verificar/registrar/actualizar/desactivar`; las fronteras tienen `CI_*Show()` + `click*()` + `ingresarDatos()/modificarDatos()`.
 - [ ] Atributos de entidad con tipo SQL, tomados de las columnas de los `note` de actividades.
 - [ ] Atributos de frontera = botones/campos de cada vista.
-- [ ] Relaciones dirigidas y **numeradas** según el orden del DS; robustez respetada (sin actor→control, actor→entidad, frontera→entidad).
+- [ ] Relaciones dirigidas y **numeradas** según el orden del DS; robustez respetada (arranque directo `1. actor→control`, luego `actor→frontera`, `frontera→control`, `control→entidad`, `control→frontera`; prohibido `actor→entidad` y `frontera→entidad`).
+- [ ] Ramas de cancelación modeladas con sufijo `-cancel` en 1er lugar (`actor→frontera`, priorizando el camino negativo) antes de la rama positiva `else`.
 - [ ] Mismos objetos/clases que las lifelines del DS; todo trazable a actividades.
 - [ ] **Diagrama de Entidades Consolidado (`02-Entregables/D. Entidades.txt`) actualizado** con las entidades `CE_*`, atributos SQL, relaciones FK y métodos nuevos o modificados de este CU.
 

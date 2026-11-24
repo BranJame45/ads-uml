@@ -1,0 +1,139 @@
+@startuml
+skinparam ClassBackgroundColor #FFFFE0
+skinparam ClassBorderColor #8B0000
+skinparam ArrowColor #8B0000
+skinparam ClassStereotypeFontColor #8B0000
+skinparam ClassHeaderBackgroundColor #F5E6E6
+skinparam shadowing false
+skinparam DefaultFontName Arial
+
+title DO_Gestionar Movimientos de Inventario (UC14)
+
+' ============================================================
+' AGENTE
+' ============================================================
+class "Encargado de Almacén" as a_encargado <<Agente>>
+
+' ============================================================
+' FRONTERAS
+' ============================================================
+class "CI_VentanaMovimientos" as b_ventana <<Frontera>> {
+  + listadoMovimientos
+  + cboTipoMovimiento
+  + txtItem
+  + txtFechaInicio
+  + txtFechaFin
+  + btnFiltrar
+  + btnVerDetalle
+  + btnAnularMovimiento
+  --
+  + CI_VentanaMovimientosShow()
+  + clickFiltrar()
+  + clickVerDetalle()
+  + clickAnularMovimiento()
+}
+
+class "CI_ModalDetalleMovimiento" as b_detalle <<Frontera>> {
+  + datosMovimiento
+  + kardexItem
+  + btnCerrar
+  --
+  + CI_ModalDetalleMovimientoShow()
+  + clickCerrar()
+}
+
+class "CI_FormularioAnulacion" as b_anular <<Frontera>> {
+  + datosAnulacion
+  + txtMotivoAnulacion
+  + btnConfirmarAnulacion
+  + btnCancelar
+  --
+  + CI_FormularioAnulacionShow()
+  + clickCancelar()
+  + ingresarMotivo()
+}
+
+class "CI_MensajeSistema" as b_msg <<Frontera>> {
+  + mensaje : String
+  + descripcion : String
+  + link : String
+  --
+  + CI_MensajeSistemaShow()
+}
+
+' ============================================================
+' CONTROLADOR
+' ============================================================
+class "CC_GestionarMovimientosController" as ctrl <<Controlador>> {
+  + validarBtnGestionarMovimientos()
+  + validarBoton()
+  + validarRolEncargadoAlmacen()
+  + filtrarMovimientos()
+  + validarBtnVerDetalle()
+  + validarBtnAnularMovimiento()
+  + validarBtnConfirmarAnulacion()
+  + validarMotivoAnulacion()
+}
+
+' ============================================================
+' ENTIDADES
+' ============================================================
+class "CE_movimiento_inventario" as e_movimiento <<Entidad>> {
+  - id_movimiento : INT
+  - id_prod : INT (FK)
+  - id_usuario : INT (FK)
+  - fecha : DATETIME
+  - tipo_movimiento : VARCHAR(30)
+  - referencia_origen : VARCHAR(50)
+  - cantidad : DECIMAL(10,2)
+  - stock_resultante : DECIMAL(10,2)
+  - motivo_anulacion : TEXT
+  - estado : VARCHAR(10)
+  --
+  + obtenerMovimientos()
+  + obtenerMovimientosFiltrados()
+  + obtenerDetalleMovimiento()
+  + obtenerKardexItem()
+  + obtenerDatosAnulacion()
+  + anularMovimiento()
+}
+
+class "CE_producto" as e_producto <<Entidad>> {
+  - id_prod : INT
+  - nombre : VARCHAR(100)
+  - stock_fisico : INT
+  --
+  + descontarStockFisico()
+  + sumarStockFisico()
+}
+
+' ============================================================
+' RELACIONES NUMERADAS (orden del DS, priorizando camino negativo)
+' ============================================================
+a_encargado --> ctrl         : 1. validarBtnGestionarMovimientos(btnGestionarMovimientos)
+ctrl        --> e_movimiento : 2. obtenerMovimientos()
+ctrl        --> b_ventana    : 3. CI_VentanaMovimientosShow(listadoMovimientos)
+
+b_ventana   --> ctrl         : 4a. [FILTRAR] filtrarMovimientos(tipo, item, fechaInicio, fechaFin)
+ctrl        --> e_movimiento : 5a. obtenerMovimientosFiltrados(tipo, item, fechaInicio, fechaFin)
+ctrl        --> b_ventana    : 6a. CI_VentanaMovimientosShow(listadoFiltrado)
+
+b_ventana   --> ctrl         : 4b. [DETALLE] Envía btnVerDetalle(id_movimiento)
+ctrl        --> e_movimiento : 5b. obtenerDetalleMovimiento(id_movimiento)
+ctrl        --> e_movimiento : 6b. obtenerKardexItem(id_prod)
+ctrl        --> b_detalle    : 7b. CI_ModalDetalleMovimientoShow(datosMovimiento, kardexItem)
+a_encargado --> b_detalle    : 8b. clickCerrar(btnCerrar)
+
+b_ventana   --> ctrl         : 4c. [ANULAR] Envía btnAnularMovimiento(id_movimiento)
+ctrl        --> e_movimiento : 5c. obtenerDatosAnulacion(id_movimiento)
+ctrl        --> b_anular     : 6c. CI_FormularioAnulacionShow(datosAnulacion)
+a_encargado --> b_anular     : 7c-cancel. [alt-Cancelar] clickCancelar(btnCancelar) → cierra modal
+b_anular    --> ctrl         : 7c. [else-Confirmar] ingresarMotivo(motivo_anulacion, btnConfirmarAnulacion)
+ctrl        --> e_producto   : 8c. descontarStockFisico(id_prod, cantidad) / sumarStockFisico(id_prod, cantidad)
+ctrl        --> e_movimiento : 9c. anularMovimiento(id_movimiento, id_usuario, motivo_anulacion)
+ctrl        --> e_movimiento : 10c. obtenerMovimientos()
+ctrl        --> b_ventana    : 11c. CI_VentanaMovimientosShow(listadoMovimientos)
+
+ctrl        --> b_msg        : * CI_MensajeSistemaShow() en éxito o validación fallida
+
+@enduml

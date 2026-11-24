@@ -1,0 +1,179 @@
+@startuml
+scale 0.5
+skinparam ActivityBackgroundColor #FFFFE0
+skinparam ActivityBorderColor #8B0000
+skinparam ArrowColor #8B0000
+skinparam PartitionBorderColor #000000
+skinparam shadowing false
+skinparam DefaultFontName Arial
+
+title Diagrama de Actividades - UC05: Gestionar Clientes
+
+|Vendedor|
+start
+:Dar clic en el botón "Gestionar Clientes" del Panel Principal;
+
+|Sistema|
+:Validar btnGestionarClientes;
+if (isset(btnGestionarClientes)) then (False)
+  :Mostrar panel <Error> "Acceso no permitido";
+  stop
+else (TRUE)
+  :Consultar en la BD la lista de clientes activos;
+  note right: SELECT id_cliente, tipo_documento, documento, nombre, telefono, correo, direccion FROM Cliente WHERE estado = 'Activo' ORDER BY nombre
+  :Mostrar ventana <Gestión de Clientes> con grilla, buscador y botón [Nuevo Cliente];
+
+  switch (Clic en ....)
+  case (boton <Buscar>)
+    :Sanitizar texto de búsqueda;
+    :Verificar si el campo tiene contenido;
+    if (¿Campo vacío?) then (SI)
+      :Mostrar panel <Error> "Debe ingresar un documento o nombre para buscar";
+      stop
+    else (NO)
+      :Consultar en la BD clientes activos filtrados por documento o nombre;
+      note right: SELECT id_cliente, tipo_documento, documento, nombre, telefono, correo, direccion FROM Cliente WHERE estado = 'Activo' AND (documento LIKE '%?%' OR nombre LIKE '%?%')
+      :Actualizar grilla con los resultados de la búsqueda;
+      stop
+    endif
+
+  case (boton <Nuevo Cliente>)
+    :Validar btnNuevoCliente;
+    if (isset(btnNuevoCliente)) then (False)
+      :Mostrar panel <Error> "Acceso no permitido";
+      stop
+    else (TRUE)
+      :Mostrar modal <Formulario de Cliente> vacío;
+      if (Clic en ...) then (boton <Cancelar>)
+        :Cerrar modal y mantener vista actual;
+        stop
+      else (boton <Guardar Nuevo>)
+        :Validar btnGuardarNuevo;
+        if (isset(btnGuardarNuevo)) then (False)
+          :Mostrar panel <Error> "Acceso no permitido";
+          stop
+        else (TRUE)
+          :Sanitizar datos del formulario;
+          :Validar que tipo documento, documento y nombre no estén vacíos;
+          if (¿Campos obligatorios vacíos?) then (SI)
+            :Mostrar panel <Error> "El tipo de documento, número de documento y nombre son obligatorios";
+            stop
+          else (NO)
+            :Validar longitud del documento (8 dígitos para DNI / 11 para RUC);
+            if (¿Formato y longitud válidos?) then (NO)
+              :Mostrar panel <Error> "El DNI debe tener 8 dígitos o el RUC 11 dígitos";
+              stop
+            else (SI)
+              :Consultar en la BD si el documento ya está registrado;
+              note right: SELECT id_cliente FROM Cliente WHERE documento = ?
+              if (¿Documento ya registrado?) then (SI)
+                :Mostrar panel <Error> "Ya existe un cliente registrado con ese número de documento";
+                stop
+              else (NO)
+                :Registrar en la BD el nuevo cliente con estado Activo;
+                note right: INSERT INTO Cliente (tipo_documento, documento, nombre, telefono, correo, direccion, estado) VALUES (?, ?, ?, ?, ?, ?, 'Activo')
+                :Mostrar panel <Éxito> "Cliente registrado correctamente";
+                stop
+              endif
+            endif
+          endif
+        endif
+      endif
+    endif
+
+  case (boton <Editar Cliente>)
+    :Validar btnEditarCliente;
+    if (isset(btnEditarCliente)) then (False)
+      :Mostrar panel <Error> "Acceso no permitido";
+      stop
+    else (TRUE)
+      :Sanitizar ID del cliente recibido;
+      :Consultar en la BD los datos del cliente;
+      note right: SELECT id_cliente, tipo_documento, documento, nombre, telefono, correo, direccion FROM Cliente WHERE id_cliente = ? AND estado = 'Activo'
+      if (¿Existe cliente?) then (NO)
+        :Mostrar panel <Error> "El cliente solicitado no existe";
+        stop
+      else (SI)
+        :Mostrar modal <Formulario de Cliente> con datos precargados (documento en sólo lectura);
+        if (Clic en ...) then (boton <Cancelar>)
+          :Cerrar modal y mantener vista actual;
+          stop
+        else (boton <Guardar Cambios>)
+          :Validar btnGuardarCambios;
+          if (isset(btnGuardarCambios)) then (False)
+            :Mostrar panel <Error> "Acceso no permitido";
+            stop
+          else (TRUE)
+            :Sanitizar datos de contacto;
+            :Validar que el nombre no esté vacío;
+            if (¿Nombre vacío?) then (SI)
+              :Mostrar panel <Error> "El nombre o razón social es obligatorio";
+              stop
+            else (NO)
+              :Actualizar en la BD los datos de contacto del cliente;
+              note right: UPDATE Cliente SET nombre = ?, telefono = ?, correo = ?, direccion = ? WHERE id_cliente = ?
+              :Mostrar panel <Éxito> "Datos del cliente actualizados correctamente";
+              stop
+            endif
+          endif
+        endif
+      endif
+    endif
+
+  case (boton <Eliminar Cliente>)
+    :Validar btnEliminarCliente;
+    if (isset(btnEliminarCliente)) then (False)
+      :Mostrar panel <Error> "Acceso no permitido";
+      stop
+    else (TRUE)
+      :Sanitizar ID del cliente recibido;
+      :Mostrar panel <Confirmación> "¿Está seguro de eliminar este cliente?";
+      if (Clic en ..) then (boton <Cancelar>)
+        :Cerrar confirmación y mantener vista actual;
+        stop
+      else (boton <Aceptar>)
+        :Validar btnAceptar;
+        if (isset(btnAceptar)) then (False)
+          :Mostrar panel <Error> "Acceso no permitido";
+          stop
+        else (TRUE)
+          :Verificar en la BD si el cliente existe y está activo;
+          note right: SELECT id_cliente FROM Cliente WHERE id_cliente = ? AND estado = 'Activo'
+          if (¿Existe cliente?) then (NO)
+            :Mostrar panel <Error> "El cliente solicitado no existe";
+            stop
+          else (SI)
+            :Consultar en la BD si el cliente tiene ventas asociadas;
+            note right: SELECT COUNT(*) FROM Venta WHERE id_cliente = ?
+            if (¿Tiene ventas asociadas?) then (SI)
+              :Mostrar panel <Error> "No se puede eliminar el cliente porque tiene ventas asociadas";
+              stop
+            else (NO)
+              :Actualizar en la BD el estado del cliente a 'Inactivo';
+              note right: UPDATE Cliente SET estado = 'Inactivo' WHERE id_cliente = ?
+              :Mostrar panel <Éxito> "Cliente eliminado correctamente";
+              stop
+            endif
+          endif
+        endif
+      endif
+    endif
+
+  case (boton <Historial>)
+    :Validar btnHistorialCliente;
+    if (isset(btnHistorialCliente)) then (False)
+      :Mostrar panel <Error> "Acceso no permitido";
+      stop
+    else (TRUE)
+      :Sanitizar ID del cliente recibido;
+      :Consultar en la BD el historial de ventas del cliente;
+      note right: SELECT id_venta, fecha, num_comprobante, tipo_comprobante, total, estado FROM Venta WHERE id_cliente = ? ORDER BY fecha DESC
+      :Mostrar modal <Historial de Compras> con las ventas del cliente;
+      :Cerrar modal al presionar [Cerrar];
+      stop
+    endif
+
+  endswitch
+endif
+
+@enduml

@@ -60,7 +60,7 @@ else (TRUE)
           stop
         else (SI)
           :Consultar en la BD la receta del producto seleccionado;
-          note right: SELECT r.id_insumo, p.nombre, p.stock_fisico, r.cantidad_unitaria FROM Receta r INNER JOIN Producto p ON r.id_insumo = p.id_prod WHERE r.id_producto_terminado = ?
+          note right: SELECT r.id_insumo, p.nombre, p.stock_fisico, r.cantidad_unitaria FROM Receta r INNER JOIN Producto p ON r.id_insumo = p.id_prod WHERE r.id_producto_terminado = ? AND p.estado = 'Activo'
           :Verificar si el producto tiene receta configurada;
           if (¿Tiene receta?) then (NO)
             :Mostrar panel <Error> "El producto seleccionado no tiene una receta asignada";
@@ -87,7 +87,7 @@ else (TRUE)
         stop
       else (SI)
         :Verificar en BD si el stock físico de cada insumo requerido es suficiente;
-        note right: SELECT id_prod, stock_fisico FROM Producto WHERE id_prod IN (?) AND tipo = 'Insumo'
+        note right: SELECT id_prod, stock_fisico FROM Producto WHERE id_prod IN (?) AND tipo = 'Insumo' AND estado = 'Activo'
         if (¿Hay stock suficiente para todos los insumos?) then (NO)
           :Mostrar panel <Error> "Stock insuficiente en uno o más insumos químicos para la producción solicitada";
           stop

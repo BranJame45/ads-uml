@@ -1,0 +1,177 @@
+@startuml
+!pragma teoz true
+skinparam sequenceArrowColor #8B0000
+skinparam sequenceLifeLineBorderColor #8B0000
+skinparam sequenceParticipantBorderColor #8B0000
+skinparam sequenceParticipantBackgroundColor #FFFFE0
+skinparam sequenceActorBorderColor #8B0000
+skinparam sequenceGroupBorderColor #8B0000
+skinparam shadowing false
+skinparam DefaultFontName Arial
+
+title DS_Registrar Producción (UC12)
+
+actor "Encargado de Almacén" as encargado
+boundary "CI_VentanaRegistrarProduccion" as b_ventana
+boundary "CI_MensajeSistema" as b_msg
+control "CC_RegistrarProduccionController" as ctrl
+entity "CE_producto" as e_producto
+entity "CE_receta" as e_receta
+entity "CE_produccion" as e_produccion
+entity "CE_produccion_detalle" as e_prod_detalle
+
+' =================== ARRANQUE (DIRECTO ACTOR -> CONTROLADOR) ===================
+encargado -> ctrl : validarBtnRegistrarProduccion(btnRegistrarProduccion: String): bool
+activate ctrl
+
+ctrl -> ctrl : validarBoton(btnRegistrarProduccion: String): bool
+
+break si validarBoton() == false
+  ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+  b_msg --> encargado : [Error] Acceso no permitido
+end
+
+ctrl -> ctrl : validarRolEncargadoAlmacen(rolUsuario: String): bool
+
+break si validarRolEncargadoAlmacen() == false
+  ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+  b_msg --> encargado : [Error] Privilegios insuficientes
+end
+
+ctrl -> b_ventana : CI_VentanaRegistrarProduccionShow()
+activate b_ventana
+b_ventana --> encargado : Muestra VentanaRegistrarProduccion con buscador vacío y área de receta oculta
+
+' =================== RAMA BUSCAR PRODUCTO ===================
+group BUSCAR PRODUCTO
+  encargado -> b_ventana : clickBuscarProducto(txtBuscarProducto: String, btnBuscarProducto: String)
+  b_ventana -> ctrl : buscarProductoTerminado(textoBusqueda: String): void
+
+  ctrl -> ctrl : validarCampoBusqueda(textoBusqueda: String): bool
+
+  break si validarCampoBusqueda() == false
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> encargado : [Error] Debe ingresar un nombre o código de producto
+  end
+
+  ctrl -> e_producto : buscarProductoTerminado(textoBusqueda: String): Object
+  activate e_producto
+  e_producto --> ctrl : datosProducto
+  deactivate e_producto
+
+  break si datosProducto es null
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> encargado : [Aviso] Producto no encontrado
+  end
+
+  ctrl -> b_ventana : CI_VentanaRegistrarProduccionShow(datosProducto: Object)
+  b_ventana --> encargado : Muestra tarjeta del producto y habilita cantidad y Calcular Insumos
+end
+
+' =================== RAMA CALCULAR INSUMOS ===================
+group CALCULAR INSUMOS
+  encargado -> b_ventana : clickCalcularInsumos(cantidad_producir: int, btnCalcularInsumos: String)
+  b_ventana -> ctrl : validarBtnCalcularInsumos(btnCalcularInsumos: String): bool
+
+  ctrl -> ctrl : validarBoton(btnCalcularInsumos: String): bool
+
+  break si validarBoton() == false
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> encargado : [Error] Acceso no permitido
+  end
+
+  ctrl -> ctrl : validarProductoEnSesion(id_producto: int): bool
+
+  break si validarProductoEnSesion() == false
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> encargado : [Error] Debe buscar y seleccionar un producto antes de calcular
+  end
+
+  ctrl -> ctrl : validarCantidadProducir(cantidad_producir: int): bool
+
+  break si validarCantidadProducir() == false
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> encargado : [Error] La cantidad a producir debe ser mayor a cero
+  end
+
+  ctrl -> e_receta : obtenerRecetaProducto(id_producto: int): List
+  activate e_receta
+  e_receta --> ctrl : listaReceta
+  deactivate e_receta
+
+  break si listaReceta está vacía
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> encargado : [Error] El producto seleccionado no tiene una receta asignada
+  end
+
+  ctrl -> ctrl : calcularInsumosRequeridos(listaReceta: List, cantidad_producir: int): List
+
+  ctrl -> b_ventana : CI_VentanaRegistrarProduccionShow(recetaCalculada: List)
+  b_ventana --> encargado : Muestra grilla con insumos requeridos, stock actual y botón Confirmar Producción
+end
+
+' =================== RAMA CANCELAR O CONFIRMAR PRODUCCIÓN ===================
+group CONFIRMAR O CANCELAR PRODUCCIÓN
+  alt el usuario presiona btnCancelar
+    encargado -> b_ventana : clickCancelar(btnCancelar: String)
+    b_ventana --> encargado : Limpia variables temporales de sesión y redirecciona
+  else el usuario presiona btnConfirmarProduccion
+    encargado -> b_ventana : clickConfirmarProduccion(btnConfirmarProduccion: String)
+    b_ventana -> ctrl : validarBtnConfirmarProduccion(btnConfirmarProduccion: String): bool
+
+    ctrl -> ctrl : validarBoton(btnConfirmarProduccion: String): bool
+
+    break si validarBoton() == false
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> encargado : [Error] Acceso no permitido
+    end
+
+    ctrl -> ctrl : validarRecetaEnSesion(recetaCalculada: List): bool
+
+    break si validarRecetaEnSesion() == false
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> encargado : [Error] Debe calcular los insumos requeridos antes de confirmar
+    end
+
+    ctrl -> e_producto : verificarStockInsumos(recetaCalculada: List): bool
+    activate e_producto
+    e_producto --> ctrl : stockSuficiente
+    deactivate e_producto
+
+    break si stockSuficiente == false
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> encargado : [Error] Stock insuficiente en uno o más insumos químicos para la producción solicitada
+    end
+
+    ctrl -> e_produccion : registrarProduccion(id_producto: int, cantidad_producida: int, id_usuario: int): int
+    activate e_produccion
+    e_produccion --> ctrl : id_produccion
+    deactivate e_produccion
+
+    ctrl -> e_prod_detalle : registrarProduccionDetalle(id_produccion: int, id_insumo: int, cantidad_consumida: double): bool
+    activate e_prod_detalle
+    e_prod_detalle --> ctrl : confirmacionDetalle
+    deactivate e_prod_detalle
+
+    ctrl -> e_producto : descontarStockFisico(id_insumo: int, cantidad_consumida: double): bool
+    activate e_producto
+    e_producto --> ctrl : confirmacionInsumos
+    deactivate e_producto
+
+    ctrl -> e_producto : sumarStockFisico(id_producto: int, cantidad_producida: int): bool
+    activate e_producto
+    e_producto --> ctrl : confirmacionProducto
+    deactivate e_producto
+
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> encargado : [Éxito] Producción registrada exitosamente. Inventario actualizado
+
+    ctrl -> b_ventana : CI_VentanaRegistrarProduccionShow()
+    b_ventana --> encargado : Muestra VentanaRegistrarProduccion limpia
+  end
+end
+
+deactivate b_ventana
+deactivate ctrl
+
+@enduml

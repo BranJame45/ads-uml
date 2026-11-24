@@ -1,0 +1,88 @@
+@startuml
+skinparam ClassBackgroundColor #FFFFE0
+skinparam ClassBorderColor #8B0000
+skinparam ArrowColor #8B0000
+skinparam ClassStereotypeFontColor #8B0000
+skinparam ClassHeaderBackgroundColor #F5E6E6
+skinparam shadowing false
+skinparam DefaultFontName Arial
+
+title DO_Autenticar Usuario (UC01)
+
+' ============================================================
+' AGENTE
+' ============================================================
+class "Usuario" as a_usuario <<Agente>>
+
+' ============================================================
+' FRONTERAS
+' ============================================================
+class "CI_FormularioLogin" as b_login <<Frontera>> {
+  + txtUsername
+  + txtPassword
+  + btnIngresar
+  --
+  + CI_FormularioLoginShow()
+  + ingresarCredenciales()
+}
+
+class "CI_PanelPrincipal" as b_panel <<Frontera>> {
+  + datosUsuario
+  + listadoRoles
+  --
+  + CI_PanelPrincipalShow()
+}
+
+class "CI_MensajeSistema" as b_msg <<Frontera>> {
+  + mensaje : String
+  + descripcion : String
+  + link : String
+  --
+  + CI_MensajeSistemaShow()
+}
+
+' ============================================================
+' CONTROLADOR
+' ============================================================
+class "CC_AutenticarUsuarioController" as ctrl <<Controlador>> {
+  + iniciarLogin()
+  + validarBtnIngresar()
+  + validarBoton()
+  + validarCampos()
+  + verificarPassword()
+  + verificarEstadoActivo()
+}
+
+' ============================================================
+' ENTIDADES
+' ============================================================
+class "CE_usuario" as e_usuario <<Entidad>> {
+  - id_usu : INT
+  - nombre_completo : VARCHAR(100)
+  - username : VARCHAR(50)
+  - password : VARCHAR(8)
+  - estado : VARCHAR(10)
+  --
+  + obtenerUsuarioPorUsername()
+}
+
+class "CE_usuario_rol" as e_usuario_rol <<Entidad>> {
+  - id_usu : INT (FK)
+  - id_rol : INT (FK)
+  --
+  + obtenerRolesUsuario()
+}
+
+' ============================================================
+' RELACIONES NUMERADAS (orden del DS)
+' ============================================================
+a_usuario --> ctrl          : 1. iniciarLogin()
+ctrl      --> b_login       : 2. CI_FormularioLoginShow()
+a_usuario --> b_login       : 3. ingresarCredenciales(username, password, btnIngresar)
+b_login   --> ctrl          : 4. validarBtnIngresar(btnIngresar)
+ctrl      --> e_usuario     : 5. obtenerUsuarioPorUsername(username)
+ctrl      --> e_usuario_rol : 6. obtenerRolesUsuario(id_usu)
+ctrl      --> b_panel       : 7. CI_PanelPrincipalShow(datosUsuario, listadoRoles)
+ctrl      --> b_msg         : * CI_MensajeSistemaShow() en validación fallida
+
+@enduml

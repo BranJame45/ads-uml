@@ -60,7 +60,7 @@ else (TRUE)
           stop
         else (SI)
           :Consultar en la BD el stock físico actual y costo del ítem;
-          note right: SELECT stock_fisico, costo_unitario FROM Producto WHERE id_prod = ?
+          note right: SELECT stock_fisico, costo_unitario FROM Producto WHERE id_prod = ? AND estado = 'Activo'
           :Verificar si la cantidad de merma no supera el stock disponible;
           if (¿Cantidad perdida > stock disponible?) then (SI)
             :Mostrar panel <Error> "La cantidad de merma no puede superar el stock existente";

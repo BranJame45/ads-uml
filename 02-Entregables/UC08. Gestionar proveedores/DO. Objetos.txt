@@ -1,0 +1,157 @@
+@startuml
+skinparam ClassBackgroundColor #FFFFE0
+skinparam ClassBorderColor #8B0000
+skinparam ArrowColor #8B0000
+skinparam ClassStereotypeFontColor #8B0000
+skinparam ClassHeaderBackgroundColor #F5E6E6
+skinparam shadowing false
+skinparam DefaultFontName Arial
+
+title DO_Gestionar Proveedores (UC08)
+
+' ============================================================
+' AGENTE
+' ============================================================
+class "Encargado de Almacén" as a_encargado <<Agente>>
+
+' ============================================================
+' FRONTERAS
+' ============================================================
+class "CI_VentanaGestionarProveedor" as b_ventana <<Frontera>> {
+  + listadoProveedores
+  + txtBuscador
+  + btnBuscar
+  + btnNuevoProveedor
+  + btnEditarProveedor
+  + btnEliminarProveedor
+  --
+  + CI_VentanaGestionarProveedorShow()
+  + clickBuscar()
+  + clickNuevoProveedor()
+  + clickEditarProveedor()
+  + clickEliminarProveedor()
+}
+
+class "CI_FormularioProveedor" as b_form <<Frontera>> {
+  + txtRazonSocial
+  + txtRUC
+  + txtTelefono
+  + txtCorreo
+  + txtDireccion
+  + btnGuardarNuevo
+  + btnGuardarCambios
+  + btnCancelar
+  --
+  + CI_FormularioProveedorShow()
+  + clickCancelar()
+  + ingresarDatos()
+  + modificarDatos()
+}
+
+class "CI_MensajeConfirmacion" as b_confirm <<Frontera>> {
+  + mensaje : String
+  + btnAceptar
+  + btnCancelar
+  --
+  + CI_MensajeConfirmacionShow()
+  + clickCancelar()
+  + clickAceptar()
+}
+
+class "CI_MensajeSistema" as b_msg <<Frontera>> {
+  + mensaje : String
+  + descripcion : String
+  + link : String
+  --
+  + CI_MensajeSistemaShow()
+}
+
+' ============================================================
+' CONTROLADOR
+' ============================================================
+class "CC_GestionarProveedorController" as ctrl <<Controlador>> {
+  + validarBtnGestionarProveedores()
+  + validarBoton()
+  + validarRolEncargadoAlmacen()
+  + buscarProveedores()
+  + validarCampoBusqueda()
+  + validarBtnNuevoProveedor()
+  + validarBtnGuardarNuevo()
+  + validarCampos()
+  + validarBtnEditarProveedor()
+  + validarBtnGuardarCambios()
+  + validarCamposEdicion()
+  + validarBtnEliminarProveedor()
+  + validarBtnAceptar()
+}
+
+' ============================================================
+' ENTIDAD
+' ============================================================
+class "CE_proveedor" as e_proveedor <<Entidad>> {
+  - id_prov : INT
+  - razon_social : VARCHAR(100)
+  - ruc : VARCHAR(11)
+  - telefono : VARCHAR(20)
+  - correo : VARCHAR(100)
+  - direccion : VARCHAR(150)
+  - estado : VARCHAR(10)
+  --
+  + obtenerProveedoresActivos()
+  + obtenerProveedoresFiltrados()
+  + verificarRucDuplicado()
+  + registrarProveedor()
+  + obtenerDatosProveedor()
+  + actualizarProveedor()
+  + verificarExistenciaActiva()
+  + desactivarProveedor()
+}
+
+' ============================================================
+' RELACIONES NUMERADAS (orden del DS, priorizando camino negativo)
+' ============================================================
+
+' -- Flujo inicial (Directo Actor -> Controlador) --
+a_encargado --> ctrl        : 1. validarBtnGestionarProveedores(btnGestionarProveedores)
+ctrl        --> e_proveedor : 2. obtenerProveedoresActivos()
+ctrl        --> b_ventana   : 3. CI_VentanaGestionarProveedorShow(listadoProveedores)
+
+' -- Rama Buscar --
+b_ventana   --> ctrl        : 4a. [BUSCAR] buscarProveedores(textoBusqueda)
+ctrl        --> e_proveedor : 5a. obtenerProveedoresFiltrados(textoBusqueda)
+ctrl        --> b_ventana   : 6a. CI_VentanaGestionarProveedorShow(listadoFiltrado)
+
+' -- Rama Agregar (1º Cancelar, 2º GuardarNuevo) --
+b_ventana   --> ctrl        : 4b. [AGREGAR] Envía btnNuevoProveedor
+ctrl        --> b_form      : 5b. CI_FormularioProveedorShow() vacío
+a_encargado --> b_form      : 6b-cancel. [alt-Cancelar] clickCancelar(btnCancelar) → cierra modal
+b_form      --> ctrl        : 6b. [else-GuardarNuevo] ingresarDatos(..., btnGuardarNuevo)
+ctrl        --> e_proveedor : 7b. verificarRucDuplicado(ruc)
+ctrl        --> e_proveedor : 8b. registrarProveedor(razon_social, ruc, telefono, correo, direccion)
+ctrl        --> e_proveedor : 9b. obtenerProveedoresActivos()
+ctrl        --> b_ventana   : 10b. CI_VentanaGestionarProveedorShow(listadoProveedores)
+
+' -- Rama Editar (1º Cancelar, 2º GuardarCambios) --
+b_ventana   --> ctrl        : 4c. [EDITAR] Envía btnEditarProveedor
+ctrl        --> e_proveedor : 5c. obtenerDatosProveedor(id_prov)
+ctrl        --> b_form      : 6c. CI_FormularioProveedorShow(datosProveedor) con RUC sólo lectura
+a_encargado --> b_form      : 7c-cancel. [alt-Cancelar] clickCancelar(btnCancelar) → cierra modal
+b_form      --> ctrl        : 7c. [else-GuardarCambios] modificarDatos(..., btnGuardarCambios)
+ctrl        --> e_proveedor : 8c. actualizarProveedor(id_prov, razon_social, telefono, correo, direccion)
+ctrl        --> e_proveedor : 9c. obtenerProveedoresActivos()
+ctrl        --> b_ventana   : 10c. CI_VentanaGestionarProveedorShow(listadoProveedores)
+
+' -- Rama Eliminar (1º Cancelar, 2º Aceptar) --
+b_ventana   --> ctrl        : 4d. [ELIMINAR] Envía btnEliminarProveedor
+ctrl        --> b_confirm   : 5d. CI_MensajeConfirmacionShow()
+a_encargado --> b_confirm   : 6d-cancel. [alt-Cancelar] clickCancelar(btnCancelar) → cierra confirmación
+b_confirm   --> ctrl        : 6d. [else-Aceptar] Envía btnAceptar
+ctrl        --> e_proveedor : 7d. verificarExistenciaActiva(id_prov)
+ctrl        --> e_proveedor : 8d. desactivarProveedor(id_prov)
+ctrl        --> e_proveedor : 9d. obtenerProveedoresActivos()
+ctrl        --> b_ventana   : 10d. CI_VentanaGestionarProveedorShow(listadoProveedores)
+
+' -- Mensajes de sistema --
+ctrl        --> b_msg       : * CI_MensajeSistemaShow() en éxito o validación fallida
+
+@enduml

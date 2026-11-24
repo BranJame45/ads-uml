@@ -1,0 +1,93 @@
+@startuml
+!pragma teoz true
+skinparam sequenceArrowColor #8B0000
+skinparam sequenceLifeLineBorderColor #8B0000
+skinparam sequenceParticipantBorderColor #8B0000
+skinparam sequenceParticipantBackgroundColor #FFFFE0
+skinparam sequenceActorBorderColor #8B0000
+skinparam sequenceGroupBorderColor #8B0000
+skinparam shadowing false
+skinparam DefaultFontName Arial
+
+title DS_Actualizar Clave (UC02)
+
+actor "Usuario" as usuario
+boundary "CI_FormularioActualizarClave" as b_form
+boundary "CI_MensajeSistema" as b_msg
+control "CC_ActualizarClaveController" as ctrl
+entity "CE_usuario" as e_usuario
+
+' =================== ARRANQUE (DIRECTO ACTOR -> CONTROLADOR) ===================
+usuario -> ctrl : validarBtnActualizarClave(btnActualizarClave: String): bool
+activate ctrl
+
+ctrl -> ctrl : validarBoton(btnActualizarClave: String): bool
+
+break si validarBoton() == false
+  ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+  b_msg --> usuario : [Error] Acceso no permitido
+end
+
+ctrl -> b_form : CI_FormularioActualizarClaveShow()
+activate b_form
+b_form --> usuario : Muestra FormularioActualizarClave (claveActual, claveNueva)
+
+' =================== ACTUALIZACIÓN DE CLAVE ===================
+group ACTUALIZAR CLAVE
+  alt el usuario presiona btnCancelar
+    usuario -> b_form : clickCancelar(btnCancelar: String)
+    b_form --> usuario : Cerrar formulario y mantener vista actual
+  else el usuario presiona btnGuardar
+    usuario -> b_form : ingresarDatos(claveActual: String, claveNueva: String, btnGuardar: String)
+    b_form -> ctrl : validarBtnGuardar(btnGuardar: String): bool
+
+    ctrl -> ctrl : validarBoton(btnGuardar: String): bool
+
+    break si validarBoton() == false
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> usuario : [Error] Acceso no permitido
+    end
+
+    ctrl -> ctrl : validarCampos(claveActual: String, claveNueva: String): int
+
+    break si validarCampos() == 0
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> usuario : [Error] Debe completar la contraseña actual y la nueva contraseña
+    end
+
+    ctrl -> ctrl : validarLongitudClave(claveNueva: String): bool
+
+    break si validarLongitudClave() == false
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> usuario : [Error] La nueva contraseña debe tener al menos 8 caracteres
+    end
+
+    ctrl -> e_usuario : obtenerPasswordActual(id_usu: int): String
+    activate e_usuario
+    e_usuario --> ctrl : passwordBD
+    deactivate e_usuario
+
+    ctrl -> ctrl : verificarPasswordActual(claveActual: String, passwordBD: String): bool
+
+    break si verificarPasswordActual() == false
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> usuario : [Error] La contraseña actual ingresada es incorrecta
+    end
+
+    ctrl -> ctrl : encriptarPassword(claveNueva: String): String
+
+    ctrl -> e_usuario : actualizarPassword(id_usu: int, passwordEncriptada: String): bool
+    activate e_usuario
+    e_usuario --> ctrl : confirmacion
+    deactivate e_usuario
+
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> usuario : [Éxito] Contraseña actualizada correctamente
+  end
+
+  deactivate b_form
+end
+
+deactivate ctrl
+
+@enduml

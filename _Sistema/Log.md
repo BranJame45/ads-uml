@@ -5,6 +5,14 @@ fecha: 2026-10-03
 ---
 # Bitácora de Cambios
 
+- **2026-11-24 (Sesión 7)**:
+  - Limpieza de rezagos en `Reglas-Diagramas-Secuencia.md` (S8, S9, S11, Checklist) y `Reglas-Diagramas-Objetos.md` (Checklist) para alinear al 100% arranque directo `Actor → Controlador` (sin `CI_PanelPrincipal`) y prioridad de camino negativo (`Cancelar` 1º).
+  - Ajustes de trazabilidad en `UC10` (`btnGuardarNuevo` / `btnGuardarCambios` en DS y DO) y `UC06` (`CI_VistaComprobante`, `btnModificarCantidad`, validación DNI/RUC en `validarComprobanteCliente`, `INNER JOIN Categoria`).
+  - Creados entregables completos (`Flujo + DA + DS + DO`) de `UC01`, `UC02`, `UC03` (con pregunta y respuesta secreta), `UC05`, `UC07`, `UC09`, `UC11` y `UC14`.
+  - Creados `DS. Secuencia.txt` y `DO. Objetos.txt` de `UC04`, `UC08`, `UC12` y `UC13`.
+  - Actualizado `02-Entregables/D. Entidades.txt` con todos los atributos y métodos acumulados de los 14 CUS (incluyendo `pregunta_secreta` y `respuesta_secreta` en `CE_usuario`).
+  - Auditoría de trazabilidad y SQL en los 14 CUS: corregida validación/filtro `estado = 'Activo'` en `UC02`, `UC03`, `UC06`, `UC12` y `UC13`, y añadida la actividad disparadora en el carril del actor en los 8 DA nuevos (en `UC01`: `Colocar URL del sistema en el navegador web`).
+
 - **2026-11-18 (Sesión 6)**:
   - Creado `DS. Secuencia.txt` de **UC06. Registrar venta** en PlantUML (29 bloques `group`/`alt`/`opt`/`break` balanceados con 29 `end`, 100% de paridad 1:1 en los 58 métodos totales contra `DO. Objetos.txt` y `D. Actividades.txt`, e inyección probada del DO de UC06 y métodos de entidad en `Trabajo aplicativo.mdl`).
   - Creado `DO. Objetos.txt` de **UC06. Registrar venta** (actor `Vendedor`, 7 fronteras `CI_*`, controlador `CC_RegistrarVentaController`, 5 entidades `CE_cliente`, `CE_venta`, `CE_detalle_venta`, `CE_pago`, `CE_producto`, relaciones numeradas trazadas 1:1 contra `D. Actividades.txt` y `Flujo-UC06.md`).

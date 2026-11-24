@@ -19,17 +19,21 @@ package "Seguridad" {
     - nombre_completo : VARCHAR(100)
     - username : VARCHAR(50)
     - password : VARCHAR(8)
-    - token_recuperacion : VARCHAR(100)
-    - token_expiracion : DATETIME
+    - pregunta_secreta : VARCHAR(150)
+    - respuesta_secreta : VARCHAR(100)
     - estado : VARCHAR(10)
     --
+    + obtenerUsuarioPorUsername()
     + obtenerUsuarios()
     + obtenerUsuariosFiltrados()
     + verificarDocumentoDuplicado()
     + registrarUsuario()
     + obtenerDatosUsuario()
     + actualizarUsuario()
+    + obtenerPasswordActual()
     + actualizarPassword()
+    + verificarRespuestaSecreta()
+    + obtenerEstadoUsuario()
     + cambiarEstadoUsuario()
   }
 
@@ -42,6 +46,7 @@ package "Seguridad" {
     - id_usu : INT (PK, FK)
     - id_rol : INT (PK, FK)
     --
+    + obtenerRolesUsuario()
     + registrarRolesUsuario()
     + actualizarRolesUsuario()
   }
@@ -61,6 +66,14 @@ package "Ventas" {
     - direccion : VARCHAR(150)
     - estado : VARCHAR(10)
     --
+    + obtenerClientesActivos()
+    + obtenerClientesFiltrados()
+    + verificarDocumentoDuplicado()
+    + registrarCliente()
+    + obtenerDatosCliente()
+    + actualizarCliente()
+    + verificarExistenciaActiva()
+    + desactivarCliente()
     + buscarClientePorDocONombre()
   }
 
@@ -82,6 +95,9 @@ package "Ventas" {
     + actualizarVentaCompletada()
     + obtenerCorrelativoComprobante()
     + registrarVenta()
+    + contarVentasCliente()
+    + obtenerHistorialCliente()
+    + obtenerVentaPorComprobante()
   }
 
   class "CE_detalle_venta" as e_detalle_venta <<Entidad>> {
@@ -93,6 +109,7 @@ package "Ventas" {
     - subtotal : DECIMAL(10,2)
     --
     + obtenerDetalleReserva()
+    + obtenerDetalleVenta()
     + registrarDetalleVenta()
   }
 
@@ -107,6 +124,8 @@ package "Ventas" {
     - tipo_resolucion : VARCHAR(30)
     - monto_devuelto : DECIMAL(10,2)
     - estado : VARCHAR(15)
+    --
+    + registrarReclamo()
   }
 }
 
@@ -129,6 +148,7 @@ package "Inventario y Producción" {
     + registrarProveedor()
     + obtenerDatosProveedor()
     + actualizarProveedor()
+    + verificarExistenciaActiva()
     + desactivarProveedor()
   }
 
@@ -141,6 +161,10 @@ package "Inventario y Producción" {
     - num_comprobante_prov : VARCHAR(30)
     - costo_total : DECIMAL(10,2)
     - estado : VARCHAR(15)
+    --
+    + obtenerHistorialIngresos()
+    + obtenerCorrelativoIngreso()
+    + registrarIngreso()
   }
 
   class "CE_detalle_ingreso" as e_detalle_ingreso <<Entidad>> {
@@ -150,6 +174,8 @@ package "Inventario y Producción" {
     - cantidad : DECIMAL(10,2)
     - costo_unitario : DECIMAL(10,2)
     - subtotal : DECIMAL(10,2)
+    --
+    + registrarDetalleIngreso()
   }
 
   class "CE_categoria" as e_categoria <<Entidad>> {
@@ -176,6 +202,7 @@ package "Inventario y Producción" {
     - descripcion : TEXT
     - id_categoria : INT (FK)
     - id_unidad : INT (FK)
+    - id_prov : INT (FK)
     - precio_venta : DECIMAL(10,2)
     - costo_unitario : DECIMAL(10,2)
     - stock_minimo : INT
@@ -186,6 +213,11 @@ package "Inventario y Producción" {
     --
     + obtenerProductosActivos()
     + obtenerProductosDisponibles()
+    + obtenerItemsActivos()
+    + buscarProductoTerminado()
+    + buscarItemPorTipo()
+    + obtenerStockYCosto()
+    + verificarStockInsumos()
     + obtenerProductosFiltrados()
     + verificarNombreDuplicado()
     + registrarProducto()
@@ -199,6 +231,15 @@ package "Inventario y Producción" {
     + separarStockProducto()
     + descontarStockFisico()
     + sumarStockFisico()
+    + obtenerInsumosActivos()
+    + obtenerInsumosFiltrados()
+    + verificarNombreInsumoDuplicado()
+    + registrarInsumo()
+    + obtenerDatosInsumo()
+    + verificarNombreEnOtroInsumo()
+    + actualizarInsumo()
+    + verificarExistenciaInsumoActiva()
+    + desactivarInsumo()
   }
 
   class "CE_receta" as e_receta <<Entidad>> {
@@ -252,6 +293,13 @@ package "Inventario y Producción" {
     - stock_resultante : DECIMAL(10,2)
     - motivo_anulacion : TEXT
     - estado : VARCHAR(10)
+    --
+    + obtenerMovimientos()
+    + obtenerMovimientosFiltrados()
+    + obtenerDetalleMovimiento()
+    + obtenerKardexItem()
+    + obtenerDatosAnulacion()
+    + anularMovimiento()
   }
 }
 
@@ -276,6 +324,7 @@ e_producto "1" -- "0..*" e_detalle_ingreso
 
 e_categoria "1" -- "0..*" e_producto
 e_unidad "1" -- "0..*" e_producto
+e_proveedor "0..1" -- "0..*" e_producto
 
 e_producto "1" -- "0..*" e_receta : producto_terminado / insumo
 e_producto "1" -- "0..*" e_produccion

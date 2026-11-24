@@ -47,11 +47,11 @@ Esta interfaz es exclusiva para nuevas ventas y se compone de dos paneles intera
   - Grilla (`DataGrid`) con los resultados. Al seleccionar uno, se activa la opción para colocar la cantidad y presionar `[Agregar al Carrito]`.
 - **Panel Derecho (El Carrito):**
   - En la parte superior, un `ComboBox` llamado `cboTipoComprobante` (Boleta / Factura).
-  - Grilla temporal (basada en el arreglo de sesión) con los ítems agregados y sus respectivos botones de `[Eliminar Ítem del Carrito]`.
+  - Grilla temporal (basada en el arreglo de sesión) con los ítems agregados y sus respectivos botones de `[Modificar Cantidad]` y `[Eliminar Ítem del Carrito]`.
   - En la parte inferior, los totales sumados (`Subtotal`, `IGV`, `Total General`) y el botón **`[Procesar Venta]`**.
 
 **Validación de Tipo de Comprobante:**
-- Al presionar `[Procesar Venta]`, si el `cboTipoComprobante` dice "Factura" y el cliente asignado es "Público General", el sistema arrojará un error forzando a cancelar el flujo o volver al inicio.
+- Al presionar `[Procesar Venta]`, si el `cboTipoComprobante` es **"Factura"** y el cliente es "Público General" o no tiene **RUC**, el sistema arroja error. Si es **"Boleta"** con cliente registrado, valida que tenga **DNI** (si es "Público General", permite Boleta por defecto).
 
 ---
 
@@ -65,6 +65,14 @@ El cajero aterriza aquí cuando la venta del carrito (Interfaz 2B) es válida.
 **Comportamiento Backend (Reserva Automática vs Venta):**
 - Si el `txtMontoIngresado` es **menor** al Total General, el backend crea un registro tipo "Ticket Interno" con `estado = 'Reservada'`, calculando el saldo restante. Se incrementa el `stock_separado` en la BD.
 - Si el `txtMontoIngresado` cubre o excede el total, se emite la Factura/Boleta con `estado = 'Completada'`, descontando el `stock_fisico`. El método de pago simplemente se registra en la base de datos sin alterar el flujo.
+
+---
+
+### Interfaz 4: `<Vista de Comprobante>`
+Se muestra automáticamente tras completar una venta directa o liquidar una reserva (`estado = 'Completada'`).
+**Distribución Visual:**
+- **Vista Previa:** Datos de la Boleta/Factura generada (correlativo, cliente, detalle de ítems y totales).
+- **Acciones:** `[Imprimir]`, `[Descargar PDF]` y `[Finalizar]` (retorna a `<Selección de Cliente>`).
 
 ---
 

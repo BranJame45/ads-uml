@@ -183,13 +183,13 @@ end
 
 ## S8 — Mensajes al usuario
 - `CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)` para **todo** `[Error]` / `[Éxito]` / `[Aviso]`; la respuesta al actor es `b_msg --> actor : [Error|Éxito|Aviso] <texto>`.
-- `CI_MensajeConfirmacionShow(msg: String)` muestra el diálogo con `(btnAceptar, btnCancelar)`; en la rama `alt` de aceptación: `actor -> b_confirm : clickAceptar(btnAceptar: String)`, `b_confirm -> ctrl : validarBtnAceptar(btnAceptar: String): bool` + `deactivate b_confirm` (y luego `validarBoton(btnAceptar)` + `break`); en la rama `else` de cancelación: `actor -> b_confirm : clickCancelar(btnCancelar: String)`, `b_confirm --> actor : Cerrar confirmación y mantener vista actual` + `deactivate b_confirm`.
+- `CI_MensajeConfirmacionShow(msg: String)` muestra el diálogo con `(btnAceptar, btnCancelar)`, priorizando el camino negativo: en la rama `alt` de cancelación: `actor -> b_confirm : clickCancelar(btnCancelar: String)`, `b_confirm --> actor : Cerrar confirmación y mantener vista actual` + `deactivate b_confirm`; en la rama `else` de aceptación: `actor -> b_confirm : clickAceptar(btnAceptar: String)`, `b_confirm -> ctrl : validarBtnAceptar(btnAceptar: String): bool` + `deactivate b_confirm` (y luego `validarBoton(btnAceptar)` + `break`).
 
 ## S9 — Activación / desactivación
 - `activate ctrl` una vez (tras la primera llamada del arranque); `deactivate ctrl` al final.
 - Cada entity: `activate` al llamarla, `--> ctrl : <retorno>`, `deactivate` inmediatamente después (activaciones cortas por cada acceso a BD).
-- Boundaries: `activate` cuando se muestran; `b_form` se desactiva al cerrar el modal; `b_confirm` al responder; `b_ventana` y `b_principal` se desactivan al final.
-- Cierre del diagrama: `deactivate b_ventana` / `deactivate ctrl` / `deactivate b_principal`.
+- Boundaries: `activate` cuando se muestran; `b_form` se desactiva al cerrar el modal; `b_confirm` al responder (dentro de cada rama `alt/else`); `b_ventana` se desactiva al final.
+- Cierre del diagrama: `deactivate b_ventana` / `deactivate ctrl`.
 
 ## S10 — Métodos de entidad (verbos canónicos)
 `obtener...()` (List/Object), `verificar...Duplicado()/...EnOtro...()` (int), `registrar...()` (int=id), `actualizar...()` (bool), `desactivar...()` (bool). Relación N:M: `registrar<Relacion>`, `actualizar<Relacion>`, `obtener<Relacion>Asignadas` sobre la entity puente (patrón equivalente al DELETE+INSERT de actividades).
@@ -207,8 +207,8 @@ end
 | N:M DELETE+INSERT | `actualizar<Relacion>()` sobre la entity puente |
 | `case <Buscar>` (sin `isset` por R4) | `group BUSCAR` con `b_ventana -> ctrl : buscar...(): void` (sin `validarBoton`) |
 | `SELECT` de maestros (combos/FK) | `ctrl -> e_maestro : obtener<Maestro>Activos(): List` antes de `CI_Formulario...Show` |
-| `<Confirmación>` panel | `CI_MensajeConfirmacion` (Show + `alt` clickAceptar/validarBtnAceptar / `else` clickCancelar) |
-| `Clic en <Cancelar>` en modal | rama `else` dentro de `alt` con `actor -> b_form : clickCancelar(btnCancelar)` (sin pasar por `ctrl`) |
+| `<Confirmación>` panel | `CI_MensajeConfirmacion` (Show + `alt` clickCancelar 1º / `else` clickAceptar/validarBtnAceptar 2º) |
+| `Clic en <Cancelar>` en modal | rama `alt` (1º, camino negativo) con `actor -> b_form : clickCancelar(btnCancelar)` (sin pasar por `ctrl`) |
 | `<Error>/<Éxito>/<Aviso>` panel | `CI_MensajeSistema` (CI_MensajeSistemaShow) |
 | Ventana `<Gestión de X>` / modal `<Formulario de X>` | `CI_Ventana<X>` / `CI_Formulario<X>` |
 | Cada `case` del switch | un `group <OPERACION>` |
@@ -219,8 +219,9 @@ end
 - [ ] Cabecera + skinparams + `!pragma teoz true`; título `DS_<Nombre> (UCXX)` con código correcto.
 - [ ] Actor correcto del CU (coherente con la Memoria-Negocio), no "Gerente" por defecto.
 - [ ] Participantes con prefijos `CI_` / `CC_...Controller` / `CE_snake_case` y aliases `b_/ctrl/e_`.
-- [ ] Ningún `actor -> ctrl` ni `actor -> e_x` directo (regla de robustez); ningún `boundary -> entity`.
-- [ ] Arranque: PanelPrincipal → click → validarBoton (break) → validarRol (break) → obtener listado → mostrar Ventana.
+- [ ] Robustez respetada: ningún `actor -> e_x` ni `boundary -> entity`. El único `actor -> ctrl` permitido es el arranque directo del CU (`validarBtn<CUS>`, sin `CI_PanelPrincipal`).
+- [ ] Arranque directo: `actor -> ctrl : validarBtn<CUS>` → `validarBoton` (break) → `validarRol` (break) → `obtener listado` → mostrar `CI_Ventana<Entidad>`.
+- [ ] Ramas de cancelación (`b_form` y `b_confirm`) modeladas con `alt` (Cancelar 1º, camino negativo) / `else` (Guardar/Aceptar 2º).
 - [ ] Un `group` por operación; cada uno abre con validarBtnX → validarBoton + break.
 - [ ] Toda validación con posible fallo tiene su `break si ...` y su mensaje por `CI_MensajeSistema`.
 - [ ] Mensajes con firma tipada `metodo(p: Tipo): Retorno`; llamadas `->`, retornos `-->`.

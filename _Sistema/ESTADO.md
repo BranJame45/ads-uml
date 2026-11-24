@@ -1,21 +1,19 @@
 ---
 tipo: sistema
 proyecto: ADS-2026 II
-estado: en_desarrollo
-fecha: 2026-10-03
+estado: completado
+fecha: 2026-11-24
 ---
 # Estado del Proyecto
 
 **Dónde quedamos:**
-- Se consolidó la estructura de Casos de Uso y sus Actores.
-- Se inició la fase de entregables comenzando por el Caso de Uso más complejo y representativo del negocio: `UC06. Registrar venta`.
+- **14 / 14 Casos de Uso (`UC01` – `UC14`) completados** al 100% con su flujo textual (`Flujo-UCXX.md`), Diagrama de Actividades (`D. Actividades.txt`), Diagrama de Secuencia (`DS. Secuencia.txt`) y Diagrama de Objetos (`DO. Objetos.txt`).
+- **Diagrama de Entidades Consolidado (`02-Entregables/D. Entidades.txt`)** completo y sincronizado con las 18 entidades `CE_*`, atributos SQL, relaciones FK y métodos acumulados de los 14 CUS.
+- **Manuales de reglas (`_Sistema/`)** depurados y alineados con los últimos estándares (`Actor → Controlador` directo sin `CI_PanelPrincipal`, ramas `Cancelar` en 1er lugar priorizando camino negativo, y `BUSCAR` sin `isset`).
 
-**Qué cambió:**
-- Creación de la estructura de carpetas: `02-Entregables/UC06. Registrar venta/`.
-- Creación de `Flujo-UC06.md` con la lógica textual detallada del caso de uso.
-- Creación de `D. Actividades.txt` con el código PlantUML, cumpliendo la regla estricta de que el actor solo tiene el nodo `start` y el sistema ejecuta todas las actividades, incluyendo las notas SQL.
-
-**Qué sigue (Próximos pasos):**
-1. Revisión por parte del usuario del flujo y del código PlantUML generado para `UC06. Registrar venta`.
-2. Continuar con la creación de los flujos y diagramas de actividades para los demás Casos de Uso (prioridad: Inventario y Almacén).
-3. Consolidar el Diagrama de Casos de Uso General.
+**Qué cambió (Sesión actual):**
+- Limpieza de rezagos en `Reglas-Diagramas-Secuencia.md` (S8, S9, S11, Checklist) y `Reglas-Diagramas-Objetos.md` (Checklist).
+- Ajustes de trazabilidad en `UC10` (`btnGuardarNuevo`/`btnGuardarCambios`) y `UC06` (`CI_VistaComprobante`, `btnModificarCantidad`, validación DNI/RUC y `INNER JOIN Categoria`).
+- Creación completa (`Flujo + DA + DS + DO`) de `UC01`, `UC02`, `UC03` (recuperación por pregunta y respuesta secreta), `UC05`, `UC07`, `UC09`, `UC11` y `UC14`.
+- Creación de `DS` y `DO` para `UC04`, `UC08`, `UC12` y `UC13`.
+- Auditoría de trazabilidad y SQL sobre los 14 CUS (validación de `estado = 'Activo'` en `UC02`, `UC03`, `UC06`, `UC12`, `UC13`, y actividad disparadora en el carril del actor en todos los `DA`).

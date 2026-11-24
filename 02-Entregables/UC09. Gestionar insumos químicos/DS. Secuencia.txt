@@ -1,0 +1,310 @@
+@startuml
+!pragma teoz true
+skinparam sequenceArrowColor #8B0000
+skinparam sequenceLifeLineBorderColor #8B0000
+skinparam sequenceParticipantBorderColor #8B0000
+skinparam sequenceParticipantBackgroundColor #FFFFE0
+skinparam sequenceActorBorderColor #8B0000
+skinparam sequenceGroupBorderColor #8B0000
+skinparam shadowing false
+skinparam DefaultFontName Arial
+
+title DS_Gestionar Insumos Químicos (UC09)
+
+actor "Encargado de Almacén" as encargado
+boundary "CI_VentanaGestionarInsumo" as b_ventana
+boundary "CI_FormularioInsumo" as b_form
+boundary "CI_MensajeConfirmacion" as b_confirm
+boundary "CI_MensajeSistema" as b_msg
+control "CC_GestionarInsumoController" as ctrl
+entity "CE_producto" as e_producto
+entity "CE_categoria" as e_categoria
+entity "CE_unidad_medida" as e_unidad
+entity "CE_proveedor" as e_proveedor
+
+' =================== ARRANQUE (DIRECTO ACTOR -> CONTROLADOR) ===================
+encargado -> ctrl : validarBtnGestionarInsumos(btnGestionarInsumos: String): bool
+activate ctrl
+
+ctrl -> ctrl : validarBoton(btnGestionarInsumos: String): bool
+
+break si validarBoton() == false
+  ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+  b_msg --> encargado : [Error] Acceso no permitido
+end
+
+ctrl -> ctrl : validarRolEncargadoAlmacen(rolUsuario: String): bool
+
+break si validarRolEncargadoAlmacen() == false
+  ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+  b_msg --> encargado : [Error] Privilegios insuficientes
+end
+
+ctrl -> e_producto : obtenerInsumosActivos(): List
+activate e_producto
+e_producto --> ctrl : listadoInsumos
+deactivate e_producto
+
+ctrl -> b_ventana : CI_VentanaGestionarInsumoShow(listadoInsumos: List)
+activate b_ventana
+b_ventana --> encargado : Muestra VentanaGestionarInsumo con listado (resaltando críticos)
+
+' =================== RAMA BUSCAR ===================
+group BUSCAR INSUMO
+  encargado -> b_ventana : clickBuscar(txtBuscador: String, btnBuscar: String)
+  b_ventana -> ctrl : buscarInsumos(textoBusqueda: String): void
+
+  ctrl -> ctrl : validarCampoBusqueda(textoBusqueda: String): bool
+
+  break si validarCampoBusqueda() == false
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> encargado : [Error] Debe ingresar un nombre o categoría para buscar
+  end
+
+  ctrl -> e_producto : obtenerInsumosFiltrados(textoBusqueda: String): List
+  activate e_producto
+  e_producto --> ctrl : listadoFiltrado
+  deactivate e_producto
+
+  ctrl -> b_ventana : CI_VentanaGestionarInsumoShow(listadoFiltrado: List)
+  b_ventana --> encargado : Actualiza grilla con los resultados
+end
+
+' =================== RAMA AGREGAR ===================
+group AGREGAR INSUMO
+  encargado -> b_ventana : clickNuevoInsumo(btnNuevoInsumo: String)
+  b_ventana -> ctrl : validarBtnNuevoInsumo(btnNuevoInsumo: String): bool
+
+  ctrl -> ctrl : validarBoton(btnNuevoInsumo: String): bool
+
+  break si validarBoton() == false
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> encargado : [Error] Acceso no permitido
+  end
+
+  ctrl -> e_categoria : obtenerCategoriasActivas(): List
+  activate e_categoria
+  e_categoria --> ctrl : listadoCategorias
+  deactivate e_categoria
+
+  ctrl -> e_unidad : obtenerUnidadesActivas(): List
+  activate e_unidad
+  e_unidad --> ctrl : listadoUnidades
+  deactivate e_unidad
+
+  ctrl -> e_proveedor : obtenerProveedoresActivos(): List
+  activate e_proveedor
+  e_proveedor --> ctrl : listadoProveedores
+  deactivate e_proveedor
+
+  ctrl -> b_form : CI_FormularioInsumoShow(listadoCategorias: List, listadoUnidades: List, listadoProveedores: List)
+  activate b_form
+  b_form --> encargado : Muestra FormularioInsumo vacío con combos precargados
+
+  alt el usuario presiona btnCancelar
+    encargado -> b_form : clickCancelar(btnCancelar: String)
+    b_form --> encargado : Cerrar modal y mantener vista actual
+  else el usuario presiona btnGuardarNuevo
+    encargado -> b_form : ingresarDatos(nombre: String, descripcion: String, id_categoria: int, id_unidad: int, id_prov: int, costo_unitario: double, stock_minimo: int, btnGuardarNuevo: String)
+    b_form -> ctrl : validarBtnGuardarNuevo(btnGuardarNuevo: String): bool
+
+    ctrl -> ctrl : validarBoton(btnGuardarNuevo: String): bool
+
+    break si validarBoton() == false
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> encargado : [Error] Acceso no permitido
+    end
+
+    ctrl -> ctrl : validarCampos(nombre: String, id_categoria: int, id_unidad: int, id_prov: int, costo_unitario: double, stock_minimo: int): int
+
+    break si validarCampos() == 0
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> encargado : [Error] Todos los campos obligatorios deben estar completos
+    end
+
+    ctrl -> e_producto : verificarNombreInsumoDuplicado(nombre: String): int
+    activate e_producto
+    e_producto --> ctrl : resultado
+    deactivate e_producto
+
+    break Si resultado != 0
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> encargado : [Error] Ya existe un insumo registrado con ese nombre
+    end
+
+    ctrl -> e_producto : registrarInsumo(nombre: String, descripcion: String, id_categoria: int, id_unidad: int, id_prov: int, costo_unitario: double, stock_minimo: int): int
+    activate e_producto
+    e_producto --> ctrl : id_prod
+    deactivate e_producto
+
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> encargado : [Éxito] Insumo registrado correctamente
+
+    ctrl -> e_producto : obtenerInsumosActivos(): List
+    activate e_producto
+    e_producto --> ctrl : listadoInsumos
+    deactivate e_producto
+
+    ctrl -> b_ventana : CI_VentanaGestionarInsumoShow(listadoInsumos: List)
+    b_ventana --> encargado : Muestra VentanaGestionarInsumo
+  end
+
+  deactivate b_form
+end
+
+' =================== RAMA EDITAR ===================
+group EDITAR INSUMO
+  encargado -> b_ventana : clickEditarInsumo(btnEditarInsumo: String, id_prod: int)
+  b_ventana -> ctrl : validarBtnEditarInsumo(btnEditarInsumo: String): bool
+
+  ctrl -> ctrl : validarBoton(btnEditarInsumo: String): bool
+
+  break si validarBoton() == false
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> encargado : [Error] Acceso no permitido
+  end
+
+  ctrl -> e_producto : obtenerDatosInsumo(id_prod: int): Object
+  activate e_producto
+  e_producto --> ctrl : datosInsumo
+  deactivate e_producto
+
+  break si datosInsumo es null
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> encargado : [Error] El insumo solicitado no existe
+  end
+
+  ctrl -> e_categoria : obtenerCategoriasActivas(): List
+  activate e_categoria
+  e_categoria --> ctrl : listadoCategorias
+  deactivate e_categoria
+
+  ctrl -> e_unidad : obtenerUnidadesActivas(): List
+  activate e_unidad
+  e_unidad --> ctrl : listadoUnidades
+  deactivate e_unidad
+
+  ctrl -> e_proveedor : obtenerProveedoresActivos(): List
+  activate e_proveedor
+  e_proveedor --> ctrl : listadoProveedores
+  deactivate e_proveedor
+
+  ctrl -> b_form : CI_FormularioInsumoShow(datosInsumo: Object, listadoCategorias: List, listadoUnidades: List, listadoProveedores: List)
+  activate b_form
+  b_form --> encargado : Muestra FormularioInsumo con datos cargados y stock en sólo lectura
+
+  alt el usuario presiona btnCancelar
+    encargado -> b_form : clickCancelar(btnCancelar: String)
+    b_form --> encargado : Cerrar modal y mantener vista actual
+  else el usuario presiona btnGuardarCambios
+    encargado -> b_form : modificarDatos(nombre: String, id_categoria: int, id_unidad: int, id_prov: int, costo_unitario: double, stock_minimo: int, btnGuardarCambios: String)
+    b_form -> ctrl : validarBtnGuardarCambios(btnGuardarCambios: String): bool
+
+    ctrl -> ctrl : validarBoton(btnGuardarCambios: String): bool
+
+    break si validarBoton() == false
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> encargado : [Error] Acceso no permitido
+    end
+
+    ctrl -> ctrl : validarCampos(nombre: String, id_categoria: int, id_unidad: int, id_prov: int, costo_unitario: double, stock_minimo: int): int
+
+    break si validarCampos() == 0
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> encargado : [Error] Todos los campos obligatorios deben estar completos
+    end
+
+    ctrl -> e_producto : verificarNombreEnOtroInsumo(nombre: String, id_prod: int): int
+    activate e_producto
+    e_producto --> ctrl : resultado
+    deactivate e_producto
+
+    break Si resultado != 0
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> encargado : [Error] El nombre ya está siendo usado por otro insumo
+    end
+
+    ctrl -> e_producto : actualizarInsumo(id_prod: int, nombre: String, id_categoria: int, id_unidad: int, id_prov: int, costo_unitario: double, stock_minimo: int): bool
+    activate e_producto
+    e_producto --> ctrl : confirmacion
+    deactivate e_producto
+
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> encargado : [Éxito] Datos del insumo actualizados correctamente
+
+    ctrl -> e_producto : obtenerInsumosActivos(): List
+    activate e_producto
+    e_producto --> ctrl : listadoInsumos
+    deactivate e_producto
+
+    ctrl -> b_ventana : CI_VentanaGestionarInsumoShow(listadoInsumos: List)
+    b_ventana --> encargado : Muestra VentanaGestionarInsumo
+  end
+
+  deactivate b_form
+end
+
+' =================== RAMA DAR DE BAJA ===================
+group DAR DE BAJA INSUMO
+  encargado -> b_ventana : clickDarBajaInsumo(btnDarBajaInsumo: String, id_prod: int)
+  b_ventana -> ctrl : validarBtnDarBajaInsumo(btnDarBajaInsumo: String): bool
+
+  ctrl -> ctrl : validarBoton(btnDarBajaInsumo: String): bool
+
+  break si validarBoton() == false
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> encargado : [Error] Acceso no permitido
+  end
+
+  ctrl -> b_confirm : CI_MensajeConfirmacionShow(msg: String)
+  activate b_confirm
+  b_confirm --> encargado : Muestra MensajeConfirmacion (btnAceptar, btnCancelar)
+
+  alt el usuario presiona btnCancelar
+    encargado -> b_confirm : clickCancelar(btnCancelar: String)
+    b_confirm --> encargado : Cerrar confirmación y mantener vista actual
+    deactivate b_confirm
+  else el usuario presiona btnAceptar
+    encargado -> b_confirm : clickAceptar(btnAceptar: String)
+    b_confirm -> ctrl : validarBtnAceptar(btnAceptar: String): bool
+    deactivate b_confirm
+
+    ctrl -> ctrl : validarBoton(btnAceptar: String): bool
+
+    break si validarBoton() == false
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> encargado : [Error] Acceso no permitido
+    end
+
+    ctrl -> e_producto : verificarExistenciaInsumoActiva(id_prod: int): int
+    activate e_producto
+    e_producto --> ctrl : resultado
+    deactivate e_producto
+
+    break si resultado == 0
+      ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+      b_msg --> encargado : [Error] El insumo solicitado no existe
+    end
+
+    ctrl -> e_producto : desactivarInsumo(id_prod: int): bool
+    activate e_producto
+    e_producto --> ctrl : confirmacion
+    deactivate e_producto
+
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> encargado : [Éxito] Insumo dado de baja correctamente
+
+    ctrl -> e_producto : obtenerInsumosActivos(): List
+    activate e_producto
+    e_producto --> ctrl : listadoInsumos
+    deactivate e_producto
+
+    ctrl -> b_ventana : CI_VentanaGestionarInsumoShow(listadoInsumos: List)
+    b_ventana --> encargado : Muestra VentanaGestionarInsumo
+  end
+end
+
+deactivate b_ventana
+deactivate ctrl
+
+@enduml
