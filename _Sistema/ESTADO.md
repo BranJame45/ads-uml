@@ -1,19 +1,23 @@
 ---
 tipo: sistema
 proyecto: ADS-2026 II
-estado: completado
+estado: en progreso (Pase a Rational Rose - DO)
 fecha: 2026-11-24
 ---
 # Estado del Proyecto
 
-**Dónde quedamos:**
-- **14 / 14 Casos de Uso (`UC01` – `UC14`) completados** al 100% con su flujo textual (`Flujo-UCXX.md`), Diagrama de Actividades (`D. Actividades.txt`), Diagrama de Secuencia (`DS. Secuencia.txt`) y Diagrama de Objetos (`DO. Objetos.txt`).
-- **Diagrama de Entidades Consolidado (`02-Entregables/D. Entidades.txt`)** completo y sincronizado con las 18 entidades `CE_*`, atributos SQL, relaciones FK y métodos acumulados de los 14 CUS.
-- **Manuales de reglas (`_Sistema/`)** depurados y alineados con los últimos estándares (`Actor → Controlador` directo sin `CI_PanelPrincipal`, ramas `Cancelar` en 1er lugar priorizando camino negativo, y `BUSCAR` sin `isset`).
-
-**Qué cambió (Sesión actual):**
-- Limpieza de rezagos en `Reglas-Diagramas-Secuencia.md` (S8, S9, S11, Checklist) y `Reglas-Diagramas-Objetos.md` (Checklist).
-- Ajustes de trazabilidad en `UC10` (`btnGuardarNuevo`/`btnGuardarCambios`) y `UC06` (`CI_VistaComprobante`, `btnModificarCantidad`, validación DNI/RUC y `INNER JOIN Categoria`).
-- Creación completa (`Flujo + DA + DS + DO`) de `UC01`, `UC02`, `UC03` (recuperación por pregunta y respuesta secreta), `UC05`, `UC07`, `UC09`, `UC11` y `UC14`.
-- Creación de `DS` y `DO` para `UC04`, `UC08`, `UC12` y `UC13`.
-- Auditoría de trazabilidad y SQL sobre los 14 CUS (validación de `estado = 'Activo'` en `UC02`, `UC03`, `UC06`, `UC12`, `UC13`, y actividad disparadora en el carril del actor en todos los `DA`).
+**Dónde quedamos (para continuar en otro ordenador):**
+1. **Entregables PlantUML (`02-Entregables/`):**
+   - `UC01`–`UC14` completos (`Flujo-UCXX.md`, `D. Actividades.txt`, `DO. Objetos.txt`, `DS. Secuencia.txt`) y `D. Entidades.txt`.
+   - En `UC11/D. Actividades.txt` se agregó la rama `boton <Ver Detalle>` (pendiente reflejarla en `UC11/DO. Objetos.txt` y `UC11/DS. Secuencia.txt` si se requiere consistencia documental; sí incluirla al pasar `UCR11` a Rose).
+2. **Rational Rose — Diagramas de Actividades (`Trabajo aplicativo Ajuste.mdl`):**
+   - **`UC01`–`UC14` aprobados** al 100% (archivo congelado como aprobado; no modificar).
+3. **Rational Rose — Diagramas de Objetos de Análisis (`Trabajo aplicativo DO.mdl`):**
+   - **Completados y verificados:**
+     - `Logical View::Analysis Model::Entity::Entities` (`18` entidades `CE_*` con `INT (PK)` / `INT (FK)` / `INT (PK, FK)` y `24` asociaciones con cardinalidades).
+     - `UCR01. Autenticar usuario` (`DO_Autenticar usuario`, directo `Usuario → CI_FormularioLogin`, solo 1er paso etiquetado).
+     - `UCR02`–`UCR07` (`DO_Actualizar clave`, `DO_Recuperar clave`, `DO_Gestionar usuarios`, `DO_Gestionar clientes`, `DO_Registrar venta`, `DO_Atender reclamo y devolución`), iniciando `Actor → Controlador` en el 1er paso y el resto sin etiqueta.
+   - **Pendiente (próximo paso en otro ordenador):**
+     - Generar **`UCR08` a `UCR14`** (`Realizacion Modulo Almacen`: `UC08`–`UC14`) en `Trabajo aplicativo DO.mdl` siguiendo [Reglas-Hibridas-Rose-IA.md](file:///c:/Users/islac/OneDrive/Desktop/ADS-2026%20II/_Sistema/Reglas-Hibridas-Rose-IA.md) (sección 3).
+     - Limpiar el `DO_Gestionar proveedores` antiguo que quedó ubicado dentro de `UCR10` al rehacer `UCR10`.
+     - Luego pasar a Diagramas de Secuencia (`DS`) y `Design Model`.

@@ -21,9 +21,28 @@ if (isset(btnRegistrarIngreso)) then (False)
 else (TRUE)
   :Consultar en la BD el historial de ingresos de mercancía;
   note right: SELECT i.id_ingreso, i.num_ingreso, i.fecha, p.razon_social, i.num_comprobante_prov, i.costo_total FROM Ingreso_Mercancia i INNER JOIN Proveedor p ON i.id_prov = p.id_prov ORDER BY i.fecha DESC
-  :Mostrar ventana <Gestión de Ingresos de Mercancía> con historial y botón [Nuevo Ingreso];
+  :Mostrar ventana <Gestión de Ingresos de Mercancía> con historial y botones [Nuevo Ingreso] y [Ver Detalle];
 
   switch (Clic en ....)
+  case (boton <Ver Detalle>)
+    :Validar btnVerDetalle;
+    if (isset(btnVerDetalle)) then (False)
+      :Mostrar panel <Error> "Acceso no permitido";
+      stop
+    else (TRUE)
+      :Sanitizar ID del ingreso seleccionado;
+      :Consultar en la BD la cabecera e ítems del detalle del ingreso;
+      note right: SELECT d.id_detalle, p.nombre AS item, d.cantidad, d.costo_unitario, d.subtotal FROM Detalle_Ingreso d INNER JOIN Producto p ON d.id_prod = p.id_prod WHERE d.id_ingreso = ?
+      if (¿Existe ingreso?) then (NO)
+        :Mostrar panel <Error> "El ingreso seleccionado no existe";
+        stop
+      else (SI)
+        :Mostrar modal <Detalle de Ingreso> con datos del proveedor, comprobante e ítems ingresados;
+        :Cerrar modal al presionar [Cerrar];
+        stop
+      endif
+    endif
+
   case (boton <Nuevo Ingreso>)
     :Validar btnNuevoIngreso;
     if (isset(btnNuevoIngreso)) then (False)
