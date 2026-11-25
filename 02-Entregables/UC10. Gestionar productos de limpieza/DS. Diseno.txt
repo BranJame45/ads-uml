@@ -1,0 +1,558 @@
+@startuml
+!pragma teoz true
+skinparam sequenceArrowColor #8B0000
+skinparam sequenceLifeLineBorderColor #8B0000
+skinparam sequenceParticipantBorderColor #8B0000
+skinparam sequenceParticipantBackgroundColor #FFFFE0
+skinparam sequenceActorBorderColor #8B0000
+skinparam sequenceGroupBorderColor #8B0000
+skinparam shadowing false
+skinparam DefaultFontName Arial
+
+title DS_Diseño - UC10: Gestionar Productos de Limpieza
+
+actor "Encargado de Almacén" as encargado
+boundary "formGestionarProducto" as f_gest
+boundary "formAgregarProducto" as f_add
+boundary "formEditarProducto" as f_edit
+boundary "mensajeConfirmacion" as b_confirm
+boundary "ViewMensajeSistema" as b_msg
+boundary "pantalla" as pant
+control "indexGestionarProducto" as idx
+control "getProducto" as get_p
+control "controlGestionarProducto" as ctrl
+entity "producto" as m_prod
+entity "categoria" as m_cat
+entity "unidad_medida" as m_uni
+database "conexion" as db
+
+' =================== ARRANQUE (ACTOR AISLADO -> INDEX -> CONTROL) ===================
+encargado -> idx : Activar
+activate idx
+
+idx -> ctrl : mostrarListado(): void
+activate ctrl
+
+ctrl -> m_prod : obtenerProductosActivos(): array
+activate m_prod
+m_prod -> db : conectarBD(): void
+activate db
+db --> m_prod : conn
+m_prod -> db : desconectarBD(): void
+deactivate db
+m_prod --> ctrl : listadoProductos
+deactivate m_prod
+
+ctrl -> f_gest : formGestionarProductoShow(listadoProductos: array): void
+activate f_gest
+f_gest -> pant : cabeceraShow("Gestión de Productos"): void
+activate pant
+f_gest -> pant : menuShow(): void
+f_gest -> pant : pieShow(): void
+deactivate pant
+
+deactivate ctrl
+deactivate idx
+
+' =================== RAMA 1: BUSCAR PRODUCTO (SIN isset POR R4) ===================
+group BUSCAR PRODUCTO
+  f_gest -> get_p : POST(txtBuscador: String, btnBuscar: String)
+  activate get_p
+
+  get_p -> get_p : validarCampoBusqueda(textoBusqueda: String): bool
+
+  break si validarCampoBusqueda() == false
+    get_p -> b_msg : viewMensajeSistemaShow("Error", "Debe ingresar un nombre o categoría para buscar", "listado")
+    activate b_msg
+    b_msg -> pant : cabeceraShow("Error"): void
+    activate pant
+    b_msg -> pant : pieShow(): void
+    deactivate pant
+    deactivate b_msg
+  end
+
+  get_p -> ctrl : buscarProductos(textoBusqueda: String): void
+  activate ctrl
+
+  ctrl -> m_prod : obtenerProductosFiltrados(textoBusqueda: String): array
+  activate m_prod
+  m_prod -> db : conectarBD(): void
+  activate db
+  db --> m_prod : conn
+  m_prod -> db : desconectarBD(): void
+  deactivate db
+  m_prod --> ctrl : listadoFiltrado
+  deactivate m_prod
+
+  ctrl -> f_gest : formGestionarProductoShow(listadoFiltrado: array): void
+  f_gest -> pant : cabeceraShow("Gestión de Productos"): void
+  activate pant
+  f_gest -> pant : menuShow(): void
+  f_gest -> pant : pieShow(): void
+  deactivate pant
+
+  deactivate ctrl
+  deactivate get_p
+end
+
+' =================== RAMA 2: AGREGAR PRODUCTO ===================
+group AGREGAR PRODUCTO
+  f_gest -> get_p : POST(btnNuevoProducto: String)
+  activate get_p
+
+  get_p -> get_p : validarBoton(btnNuevoProducto: String): bool
+
+  break si validarBoton() == false
+    get_p -> b_msg : viewMensajeSistemaShow("Error", "Acceso no permitido", "listado")
+    activate b_msg
+    b_msg -> pant : cabeceraShow("Error"): void
+    activate pant
+    b_msg -> pant : pieShow(): void
+    deactivate pant
+    deactivate b_msg
+  end
+
+  get_p -> ctrl : mostrarFormularioAgregar(): void
+  activate ctrl
+
+  ctrl -> m_cat : obtenerCategoriasActivas(): array
+  activate m_cat
+  m_cat -> db : conectarBD(): void
+  activate db
+  db --> m_cat : conn
+  m_cat -> db : desconectarBD(): void
+  deactivate db
+  m_cat --> ctrl : listadoCategorias
+  deactivate m_cat
+
+  ctrl -> m_uni : obtenerUnidadesActivas(): array
+  activate m_uni
+  m_uni -> db : conectarBD(): void
+  activate db
+  db --> m_uni : conn
+  m_uni -> db : desconectarBD(): void
+  deactivate db
+  m_uni --> ctrl : listadoUnidades
+  deactivate m_uni
+
+  ctrl -> f_add : formAgregarProductoShow(listadoCategorias: array, listadoUnidades: array): void
+  activate f_add
+  f_add -> pant : cabeceraShow("Nuevo Producto"): void
+  activate pant
+  f_add -> pant : menuShow(): void
+  f_add -> pant : pieShow(): void
+  deactivate pant
+
+  deactivate ctrl
+  deactivate get_p
+
+  alt el usuario presiona btnCancelar (camino negativo 1º)
+    f_add -> get_p : POST(btnCancelar: String)
+    activate get_p
+    get_p -> ctrl : cancelarOperacion(): void
+    activate ctrl
+    ctrl -> f_gest : formGestionarProductoShow(listadoProductos: array): void
+    f_gest -> pant : cabeceraShow("Gestión de Productos"): void
+    activate pant
+    f_gest -> pant : menuShow(): void
+    f_gest -> pant : pieShow(): void
+    deactivate pant
+    deactivate ctrl
+    deactivate get_p
+  else el usuario presiona btnGuardarNuevo
+    f_add -> get_p : POST(nombre: String, descripcion: String, id_categoria: int, id_unidad: int, precio_venta: double, stock_minimo: int, btnGuardarNuevo: String)
+    activate get_p
+
+    get_p -> get_p : validarBoton(btnGuardarNuevo: String): bool
+
+    break si validarBoton() == false
+      get_p -> b_msg : viewMensajeSistemaShow("Error", "Acceso no permitido", "formAgregar")
+      activate b_msg
+      b_msg -> pant : cabeceraShow("Error"): void
+      activate pant
+      b_msg -> pant : pieShow(): void
+      deactivate pant
+      deactivate b_msg
+    end
+
+    get_p -> get_p : validarCampos(nombre: String, id_categoria: int, id_unidad: int, precio_venta: double, stock_minimo: int): int
+
+    break si validarCampos() == 0
+      get_p -> b_msg : viewMensajeSistemaShow("Error", "El nombre, categoría, unidad, precio de venta y stock mínimo son obligatorios", "formAgregar")
+      activate b_msg
+      b_msg -> pant : cabeceraShow("Error"): void
+      activate pant
+      b_msg -> pant : pieShow(): void
+      deactivate pant
+      deactivate b_msg
+    end
+
+    get_p -> ctrl : agregarProducto(nombre: String, descripcion: String, id_categoria: int, id_unidad: int, precio_venta: double, stock_minimo: int): void
+    activate ctrl
+
+    ctrl -> m_prod : verificarNombreDuplicado(nombre: String): int
+    activate m_prod
+    m_prod -> db : conectarBD(): void
+    activate db
+    db --> m_prod : conn
+    m_prod -> db : desconectarBD(): void
+    deactivate db
+    m_prod --> ctrl : resultado
+    deactivate m_prod
+
+    break si resultado != 0
+      ctrl -> b_msg : viewMensajeSistemaShow("Error", "Ya existe un producto registrado con ese nombre", "formAgregar")
+      activate b_msg
+      b_msg -> pant : cabeceraShow("Error"): void
+      activate pant
+      b_msg -> pant : pieShow(): void
+      deactivate pant
+      deactivate b_msg
+    end
+
+    ctrl -> m_prod : registrarProducto(nombre: String, descripcion: String, id_categoria: int, id_unidad: int, precio_venta: double, stock_minimo: int): int
+    activate m_prod
+    m_prod -> db : conectarBD(): void
+    activate db
+    db --> m_prod : conn
+    m_prod -> db : desconectarBD(): void
+    deactivate db
+    m_prod --> ctrl : id_prod
+    deactivate m_prod
+
+    ctrl -> b_msg : viewMensajeSistemaShow("Éxito", "Producto registrado correctamente", "listado")
+    activate b_msg
+    b_msg -> pant : cabeceraShow("Éxito"): void
+    activate pant
+    b_msg -> pant : pieShow(): void
+    deactivate pant
+    deactivate b_msg
+
+    ctrl -> m_prod : obtenerProductosActivos(): array
+    activate m_prod
+    m_prod -> db : conectarBD(): void
+    activate db
+    db --> m_prod : conn
+    m_prod -> db : desconectarBD(): void
+    deactivate db
+    m_prod --> ctrl : listadoProductos
+    deactivate m_prod
+
+    ctrl -> f_gest : formGestionarProductoShow(listadoProductos: array): void
+    f_gest -> pant : cabeceraShow("Gestión de Productos"): void
+    activate pant
+    f_gest -> pant : menuShow(): void
+    f_gest -> pant : pieShow(): void
+    deactivate pant
+
+    deactivate ctrl
+    deactivate get_p
+  end
+
+  deactivate f_add
+end
+
+' =================== RAMA 3: EDITAR PRODUCTO ===================
+group EDITAR PRODUCTO
+  f_gest -> get_p : POST(id_prod: int, btnEditarProducto: String)
+  activate get_p
+
+  get_p -> get_p : validarBoton(btnEditarProducto: String): bool
+
+  break si validarBoton() == false
+    get_p -> b_msg : viewMensajeSistemaShow("Error", "Acceso no permitido", "listado")
+    activate b_msg
+    b_msg -> pant : cabeceraShow("Error"): void
+    activate pant
+    b_msg -> pant : pieShow(): void
+    deactivate pant
+    deactivate b_msg
+  end
+
+  get_p -> ctrl : mostrarFormularioEditar(id_prod: int): void
+  activate ctrl
+
+  ctrl -> m_prod : obtenerDatosProducto(id_prod: int): array
+  activate m_prod
+  m_prod -> db : conectarBD(): void
+  activate db
+  db --> m_prod : conn
+  m_prod -> db : desconectarBD(): void
+  deactivate db
+  m_prod --> ctrl : datosProducto
+  deactivate m_prod
+
+  break si datosProducto es null
+    ctrl -> b_msg : viewMensajeSistemaShow("Error", "El producto solicitado no existe", "listado")
+    activate b_msg
+    b_msg -> pant : cabeceraShow("Error"): void
+    activate pant
+    b_msg -> pant : pieShow(): void
+    deactivate pant
+    deactivate b_msg
+  end
+
+  ctrl -> m_cat : obtenerCategoriasActivas(): array
+  activate m_cat
+  m_cat -> db : conectarBD(): void
+  activate db
+  db --> m_cat : conn
+  m_cat -> db : desconectarBD(): void
+  deactivate db
+  m_cat --> ctrl : listadoCategorias
+  deactivate m_cat
+
+  ctrl -> m_uni : obtenerUnidadesActivas(): array
+  activate m_uni
+  m_uni -> db : conectarBD(): void
+  activate db
+  db --> m_uni : conn
+  m_uni -> db : desconectarBD(): void
+  deactivate db
+  m_uni --> ctrl : listadoUnidades
+  deactivate m_uni
+
+  ctrl -> f_edit : formEditarProductoShow(datosProducto: array, listadoCategorias: array, listadoUnidades: array): void
+  activate f_edit
+  f_edit -> pant : cabeceraShow("Editar Producto"): void
+  activate pant
+  f_edit -> pant : menuShow(): void
+  f_edit -> pant : pieShow(): void
+  deactivate pant
+
+  deactivate ctrl
+  deactivate get_p
+
+  alt el usuario presiona btnCancelar (camino negativo 1º)
+    f_edit -> get_p : POST(btnCancelar: String)
+    activate get_p
+    get_p -> ctrl : cancelarOperacion(): void
+    activate ctrl
+    ctrl -> f_gest : formGestionarProductoShow(listadoProductos: array): void
+    f_gest -> pant : cabeceraShow("Gestión de Productos"): void
+    activate pant
+    f_gest -> pant : menuShow(): void
+    f_gest -> pant : pieShow(): void
+    deactivate pant
+    deactivate ctrl
+    deactivate get_p
+  else el usuario presiona btnGuardarCambios
+    f_edit -> get_p : POST(id_prod: int, nombre: String, id_categoria: int, id_unidad: int, precio_venta: double, stock_minimo: int, btnGuardarCambios: String)
+    activate get_p
+
+    get_p -> get_p : validarBoton(btnGuardarCambios: String): bool
+
+    break si validarBoton() == false
+      get_p -> b_msg : viewMensajeSistemaShow("Error", "Acceso no permitido", "formEditar")
+      activate b_msg
+      b_msg -> pant : cabeceraShow("Error"): void
+      activate pant
+      b_msg -> pant : pieShow(): void
+      deactivate pant
+      deactivate b_msg
+    end
+
+    get_p -> get_p : validarCampos(nombre: String, id_categoria: int, id_unidad: int, precio_venta: double, stock_minimo: int): int
+
+    break si validarCampos() == 0
+      get_p -> b_msg : viewMensajeSistemaShow("Error", "El nombre, categoría, unidad, precio de venta y stock mínimo son obligatorios", "formEditar")
+      activate b_msg
+      b_msg -> pant : cabeceraShow("Error"): void
+      activate pant
+      b_msg -> pant : pieShow(): void
+      deactivate pant
+      deactivate b_msg
+    end
+
+    get_p -> ctrl : editarProducto(id_prod: int, nombre: String, id_categoria: int, id_unidad: int, precio_venta: double, stock_minimo: int): void
+    activate ctrl
+
+    ctrl -> m_prod : verificarNombreEnOtroProducto(nombre: String, id_prod: int): int
+    activate m_prod
+    m_prod -> db : conectarBD(): void
+    activate db
+    db --> m_prod : conn
+    m_prod -> db : desconectarBD(): void
+    deactivate db
+    m_prod --> ctrl : resultado
+    deactivate m_prod
+
+    break si resultado != 0
+      ctrl -> b_msg : viewMensajeSistemaShow("Error", "El nombre ya está siendo usado por otro producto", "formEditar")
+      activate b_msg
+      b_msg -> pant : cabeceraShow("Error"): void
+      activate pant
+      b_msg -> pant : pieShow(): void
+      deactivate pant
+      deactivate b_msg
+    end
+
+    ctrl -> m_prod : actualizarProducto(id_prod: int, nombre: String, id_categoria: int, id_unidad: int, precio_venta: double, stock_minimo: int): bool
+    activate m_prod
+    m_prod -> db : conectarBD(): void
+    activate db
+    db --> m_prod : conn
+    m_prod -> db : desconectarBD(): void
+    deactivate db
+    m_prod --> ctrl : confirmacion
+    deactivate m_prod
+
+    ctrl -> b_msg : viewMensajeSistemaShow("Éxito", "Datos del producto actualizados correctamente", "listado")
+    activate b_msg
+    b_msg -> pant : cabeceraShow("Éxito"): void
+    activate pant
+    b_msg -> pant : pieShow(): void
+    deactivate pant
+    deactivate b_msg
+
+    ctrl -> m_prod : obtenerProductosActivos(): array
+    activate m_prod
+    m_prod -> db : conectarBD(): void
+    activate db
+    db --> m_prod : conn
+    m_prod -> db : desconectarBD(): void
+    deactivate db
+    m_prod --> ctrl : listadoProductos
+    deactivate m_prod
+
+    ctrl -> f_gest : formGestionarProductoShow(listadoProductos: array): void
+    f_gest -> pant : cabeceraShow("Gestión de Productos"): void
+    activate pant
+    f_gest -> pant : menuShow(): void
+    f_gest -> pant : pieShow(): void
+    deactivate pant
+
+    deactivate ctrl
+    deactivate get_p
+  end
+
+  deactivate f_edit
+end
+
+' =================== RAMA 4: DAR DE BAJA PRODUCTO ===================
+group DAR DE BAJA PRODUCTO
+  f_gest -> get_p : POST(id_prod: int, btnDarBajaProducto: String)
+  activate get_p
+
+  get_p -> get_p : validarBoton(btnDarBajaProducto: String): bool
+
+  break si validarBoton() == false
+    get_p -> b_msg : viewMensajeSistemaShow("Error", "Acceso no permitido", "listado")
+    activate b_msg
+    b_msg -> pant : cabeceraShow("Error"): void
+    activate pant
+    b_msg -> pant : pieShow(): void
+    deactivate pant
+    deactivate b_msg
+  end
+
+  get_p -> ctrl : confirmarBaja(id_prod: int): void
+  activate ctrl
+
+  ctrl -> b_confirm : mensajeConfirmacionShow("¿Está seguro de dar de baja este producto?"): void
+  activate b_confirm
+  b_confirm -> pant : cabeceraShow("Confirmación"): void
+  activate pant
+  b_confirm -> pant : pieShow(): void
+  deactivate pant
+
+  deactivate ctrl
+  deactivate get_p
+
+  alt el usuario presiona btnCancelar / btnNo (camino negativo 1º)
+    b_confirm -> get_p : POST(btnCancelar: String)
+    activate get_p
+    get_p -> ctrl : cancelarOperacion(): void
+    activate ctrl
+    ctrl -> f_gest : formGestionarProductoShow(listadoProductos: array): void
+    f_gest -> pant : cabeceraShow("Gestión de Productos"): void
+    activate pant
+    f_gest -> pant : menuShow(): void
+    f_gest -> pant : pieShow(): void
+    deactivate pant
+    deactivate ctrl
+    deactivate get_p
+    deactivate b_confirm
+  else el usuario presiona btnAceptar / btnSi
+    b_confirm -> get_p : POST(id_prod: int, btnAceptar: String)
+    activate get_p
+    deactivate b_confirm
+
+    get_p -> get_p : validarBoton(btnAceptar: String): bool
+
+    break si validarBoton() == false
+      get_p -> b_msg : viewMensajeSistemaShow("Error", "Acceso no permitido", "listado")
+      activate b_msg
+      b_msg -> pant : cabeceraShow("Error"): void
+      activate pant
+      b_msg -> pant : pieShow(): void
+      deactivate pant
+      deactivate b_msg
+    end
+
+    get_p -> ctrl : darBajaProducto(id_prod: int): void
+    activate ctrl
+
+    ctrl -> m_prod : verificarExistenciaActiva(id_prod: int): int
+    activate m_prod
+    m_prod -> db : conectarBD(): void
+    activate db
+    db --> m_prod : conn
+    m_prod -> db : desconectarBD(): void
+    deactivate db
+    m_prod --> ctrl : resultado
+    deactivate m_prod
+
+    break si resultado == 0
+      ctrl -> b_msg : viewMensajeSistemaShow("Error", "El producto solicitado no existe", "listado")
+      activate b_msg
+      b_msg -> pant : cabeceraShow("Error"): void
+      activate pant
+      b_msg -> pant : pieShow(): void
+      deactivate pant
+      deactivate b_msg
+    end
+
+    ctrl -> m_prod : desactivarProducto(id_prod: int): bool
+    activate m_prod
+    m_prod -> db : conectarBD(): void
+    activate db
+    db --> m_prod : conn
+    m_prod -> db : desconectarBD(): void
+    deactivate db
+    m_prod --> ctrl : confirmacion
+    deactivate m_prod
+
+    ctrl -> b_msg : viewMensajeSistemaShow("Éxito", "Producto dado de baja correctamente", "listado")
+    activate b_msg
+    b_msg -> pant : cabeceraShow("Éxito"): void
+    activate pant
+    b_msg -> pant : pieShow(): void
+    deactivate pant
+    deactivate b_msg
+
+    ctrl -> m_prod : obtenerProductosActivos(): array
+    activate m_prod
+    m_prod -> db : conectarBD(): void
+    activate db
+    db --> m_prod : conn
+    m_prod -> db : desconectarBD(): void
+    deactivate db
+    m_prod --> ctrl : listadoProductos
+    deactivate m_prod
+
+    ctrl -> f_gest : formGestionarProductoShow(listadoProductos: array): void
+    f_gest -> pant : cabeceraShow("Gestión de Productos"): void
+    activate pant
+    f_gest -> pant : menuShow(): void
+    f_gest -> pant : pieShow(): void
+    deactivate pant
+
+    deactivate ctrl
+    deactivate get_p
+  end
+end
+
+deactivate f_gest
+
+@enduml

@@ -30,13 +30,6 @@ break si validarBoton() == false
   b_msg --> admin : [Error] Acceso no permitido
 end
 
-ctrl -> ctrl : validarRolAdministrador(rolUsuario: String): bool
-
-break si validarRolAdministrador() == false
-  ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
-  b_msg --> admin : [Error] Privilegios insuficientes
-end
-
 ctrl -> e_usuario : obtenerUsuarios(): List
 activate e_usuario
 e_usuario --> ctrl : listadoUsuarios

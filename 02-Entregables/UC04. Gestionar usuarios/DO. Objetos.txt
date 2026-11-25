@@ -62,7 +62,6 @@ class "CI_MensajeSistema" as b_msg <<Frontera>> {
 class "CC_GestionarUsuarioController" as ctrl <<Controlador>> {
   + validarBtnGestionarUsuarios()
   + validarBoton()
-  + validarRolAdministrador()
   + buscarUsuarios()
   + validarCampoBusqueda()
   + validarBtnNuevoUsuario()

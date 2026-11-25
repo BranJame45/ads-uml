@@ -1,0 +1,185 @@
+@startuml
+skinparam ClassBackgroundColor #FFFFE0
+skinparam ClassBorderColor #8B0000
+skinparam ArrowColor #8B0000
+skinparam ClassStereotypeFontColor #8B0000
+skinparam ClassHeaderBackgroundColor #F5E6E6
+skinparam shadowing false
+skinparam DefaultFontName Arial
+
+title DO_Diseño - UC10: Gestionar Productos de Limpieza
+
+' ============================================================
+' PAQUETE SHARED
+' ============================================================
+package "shared" {
+  class "pantalla" as pant {
+    + cabeceraShow(titulo: String): void
+    + menuShow(): void
+    + pieShow(): void
+  }
+
+  class "ViewMensajeSistema" as b_msg {
+    - lblTitulo : JLabel
+    - lblDescripcion : JLabel
+    - btnAceptar : JButton
+    --
+    + viewMensajeSistemaShow(tipo: String, descripcion: String, link: String): void
+  }
+
+  class "mensajeConfirmacion" as b_confirm {
+    - lblPregunta : JLabel
+    - btnSi : JButton
+    - btnNo : JButton
+    --
+    + mensajeConfirmacionShow(descripcion: String): void
+  }
+
+  b_msg --|> pant
+  b_confirm --|> pant
+}
+
+' ============================================================
+' PAQUETE MÓDULO DE INVENTARIO (UC10)
+' ============================================================
+package "Módulo de Inventario" {
+  class "indexGestionarProducto" as idx
+
+  class "formGestionarProducto" as f_gest {
+    - listadoProductos : table
+    - txtBuscador : input[text]
+    - btnBuscar : button
+    - btnNuevoProducto : button
+    - btnEditarProducto : button
+    - btnDarBajaProducto : button
+    --
+    + formGestionarProductoShow(listadoProductos: array): void
+  }
+
+  class "formAgregarProducto" as f_add {
+    - txtNombre : input[text]
+    - txtDescripcion : textarea
+    - cboCategoria : select
+    - cboUnidad : select
+    - txtPrecioVenta : input[number]
+    - txtStockMinimo : input[number]
+    - btnGuardarNuevo : button
+    - btnCancelar : button
+    --
+    + formAgregarProductoShow(listadoCategorias: array, listadoUnidades: array): void
+  }
+
+  class "formEditarProducto" as f_edit {
+    - txtNombre : input[text]
+    - txtDescripcion : textarea
+    - cboCategoria : select
+    - cboUnidad : select
+    - txtPrecioVenta : input[number]
+    - txtStockMinimo : input[number]
+    - lblStockActual : label
+    - btnGuardarCambios : button
+    - btnCancelar : button
+    --
+    + formEditarProductoShow(datosProducto: array, listadoCategorias: array, listadoUnidades: array): void
+  }
+
+  class "getProducto" as get_p {
+    + validarBoton(btn: String): bool
+    + validarCampoBusqueda(textoBusqueda: String): bool
+    + validarCampos(nombre: String, id_categoria: int, id_unidad: int, precio_venta: double, stock_minimo: int): int
+  }
+
+  class "controlGestionarProducto" as ctrl {
+    + mostrarListado(): void
+    + buscarProductos(textoBusqueda: String): void
+    + mostrarFormularioAgregar(): void
+    + agregarProducto(nombre: String, descripcion: String, id_categoria: int, id_unidad: int, precio_venta: double, stock_minimo: int): void
+    + mostrarFormularioEditar(id_prod: int): void
+    + editarProducto(id_prod: int, nombre: String, id_categoria: int, id_unidad: int, precio_venta: double, stock_minimo: int): void
+    + confirmarBaja(id_prod: int): void
+    + darBajaProducto(id_prod: int): void
+    + cancelarOperacion(): void
+  }
+
+  f_gest --|> pant
+  f_add --|> pant
+  f_edit --|> pant
+}
+
+' ============================================================
+' PAQUETE MODELOS
+' ============================================================
+package "Modelos" {
+  class "conexion" as db {
+    + conectarBD(): void
+    + desconectarBD(): void
+    + beginTransaction(): void
+    + commit(): void
+    + rollBack(): void
+  }
+
+  class "producto" as m_prod {
+    - id_prod : int
+    - nombre : String
+    - descripcion : String
+    - id_categoria : int
+    - id_unidad : int
+    - precio_venta : double
+    - stock_minimo : int
+    - stock_fisico : int
+    - tipo : String
+    - estado : String
+    --
+    + obtenerProductosActivos(): array
+    + obtenerProductosFiltrados(textoBusqueda: String): array
+    + verificarNombreDuplicado(nombre: String): int
+    + registrarProducto(nombre: String, descripcion: String, id_categoria: int, id_unidad: int, precio_venta: double, stock_minimo: int): int
+    + obtenerDatosProducto(id_prod: int): array
+    + verificarNombreEnOtroProducto(nombre: String, id_prod: int): int
+    + actualizarProducto(id_prod: int, nombre: String, id_categoria: int, id_unidad: int, precio_venta: double, stock_minimo: int): bool
+    + verificarExistenciaActiva(id_prod: int): int
+    + desactivarProducto(id_prod: int): bool
+  }
+
+  class "categoria" as m_cat {
+    - id_categoria : int
+    - nombre : String
+    - estado : String
+    --
+    + obtenerCategoriasActivas(): array
+  }
+
+  class "unidad_medida" as m_uni {
+    - id_unidad : int
+    - nombre : String
+    - abreviatura : String
+    - estado : String
+    --
+    + obtenerUnidadesActivas(): array
+  }
+
+  m_prod --|> db
+  m_cat --|> db
+  m_uni --|> db
+}
+
+' ============================================================
+' DEPENDENCIAS / ASOCIACIONES DE DISEÑO
+' ============================================================
+idx     --> ctrl      : mostrarListado()
+f_gest  --> get_p     : POST
+f_add   --> get_p     : POST
+f_edit  --> get_p     : POST
+b_confirm --> get_p   : POST
+get_p   --> ctrl      : delega operación
+get_p   --> b_msg     : viewMensajeSistemaShow()
+ctrl    --> f_gest    : formGestionarProductoShow()
+ctrl    --> f_add     : formAgregarProductoShow()
+ctrl    --> f_edit    : formEditarProductoShow()
+ctrl    --> b_confirm : mensajeConfirmacionShow()
+ctrl    --> b_msg     : viewMensajeSistemaShow()
+ctrl    --> m_prod
+ctrl    --> m_cat
+ctrl    --> m_uni
+
+@enduml

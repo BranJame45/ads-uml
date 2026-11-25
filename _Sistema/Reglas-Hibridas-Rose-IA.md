@@ -61,11 +61,14 @@ Todo Diagrama de Actividades vive **dentro de su Caso de Uso** en:
 
 Se rige por la **Regla Híbrida S12** de [Reglas-Diagramas-Secuencia.md](file:///c:/Users/islac/OneDrive/Desktop/ADS-2026%20II/_Sistema/Reglas-Diagramas-Secuencia.md#L236-L255):
 - Ubicación: `Logical View` → `Analysis Model` (clases) y `Realizacion Modulo <X>` → `UCRXX. <Nombre>` → `Mechanism` + `InteractionDiagram "DS_<Nombre>"`.
-- **Actor aislado:** único mensaje `1: CI_PanelPrincipalShow()` (o inicio directo según formato del modelo Rose); ninguna flecha regresa al Actor ni vuelve a salir de él.
-- **Inicio directo Frontera → Controlador:** omitir `click*`, `ingresarDatos`, `clickCancelar`.
-- **Únicas flechas de retorno (`ToClientFromSupplier`):** exclusivamente `CE_* --> CC_*Controller`.
-- **Cortes (`break`) y mensajes:** llamadas directas `CC_*Controller → CI_MensajeSistema` con `Label`s visuales (`[si ...]` / `[Error|Éxito|Aviso]`).
-- **`Focus_Of_Control`:** barras de entidad de altura exacta (`height = 105, y_coord = 15`), callbacks en controlador con `Nested = TRUE`, y reutilización del `Focus_Of_Control` de la frontera cuando responde inmediatamente tras `CI_*Show()`.
+- **Orden estricto de columnas (MVC):** `Actor` → todos los `Boundaries` (`CI_*`, incluyendo `CI_MensajeSistema`) → `Controlador` (`CC_*Controller`) → todas las `Entidades` (`CE_*`).
+- **Actor aislado:** único mensaje inicial `1: ...` (sin retornos ni segundas llamadas al actor).
+- **Cancelar en MVC estricto (sin Boundary → Boundary):** al presionar `btnCancelar`, el formulario **no** llama directamente a la ventana anterior; pasa por el controlador (`CI_Formulario* → CC_*Controller : cancelarOperacion(btnCancelar: String): void` y `CC_*Controller → CI_Ventana* : CI_Ventana*Show()`).
+- **Autollamadas en Rose (`SelfMessView`):** toda llamada del controlador hacia sí mismo (`validarBoton`, `validarRol*`, `validarCampos*`, `encriptarPassword`, etc.) debe generarse con `(object SelfMessView ...)` (con `terminus` a `+150 px` a la derecha y `Focus_Entry` con `Nested = TRUE`, `height = 90`), nunca como `InterMessView`.
+- **Entidades con barra única por consulta:** cada llamada `CC_*Controller → CE_*` y su retorno punteado (`Return` + `ToClientFromSupplier`) comparten **el mismo `Focus_Of_Control`** en la entidad.
+- **Barras continuas del controlador:** cada flujo/petición al controlador mantiene **1 `Focus_Of_Control` continuo** de inicio a fin (sin partirse en las autollamadas ni en las salidas de error hacia `CI_MensajeSistema`).
+- **Sin cuadros `NoteView` automáticos:** los rectángulos agrupadores se agregan manualmente en Rose; dejar el lienzo limpio solo con `Label`s de condición (`[si ...]`) y resultado (`[Error|Éxito|Aviso]`).
+- **Sintaxis Petal de mensajes (`Mechanism`):** en cada `object Link`, la lista de mensajes debe declararse obligatoriamente como `messages (list Messages ...)` (nunca `message_list`, ya que provoca `Petal syntax error near 'message_list'` al cargar en Rose).
 
 ---
 
@@ -88,15 +91,12 @@ Se rige por la **Regla Híbrida S12** de [Reglas-Diagramas-Secuencia.md](file://
    - `Boundary`: `icon "boundary"`, `width 230`, `height 154`.
    - `Controllet` (`CC_*Controller`): `icon "control"`, `height 154`.
    - `Entity` (`CE_*`): `icon "entity"`, `height 154`.
-2. **Etiquetado de flechas (`Association` / `AssociationViewNew`)**:
-   - **Solo el primer paso** lleva etiqueta (ej. `1. validarBtnActualizarClave(btnActualizarClave)`), tanto en `(object Association "<etiqueta>" ...)` como en `AssociationViewNew` + `SegLabel`.
-   - **Todas las demás flechas van sin etiqueta**: `(object Association "$UNNAMED$..." ...)` y `AssociationViewNew` sin `SegLabel`.
-   - Evitar flechas duplicadas entre el mismo par origen-destino en el diagrama de objetos (una asociación por par conectado).
-3. **Caso especial `UC01. Autenticar usuario`**:
-   - En análisis, **no** se dibuja flecha `Usuario → CC_AutenticarUsuarioController`; el actor conecta directamente con **`CI_FormularioLogin`** (`1. ingresarCredenciales(username, password, btnIngresar)`).
-4. **Casos `UC02` a `UC14`**:
-   - Inician con **`Actor → CC_*Controller`** (`1. validarBtn<Accion>(btn<Accion>)`) y el resto de relaciones sin etiqueta.
-5. **Trazabilidad previa al pase**:
+2. **Diferencia clave `DO. Objetos.txt` (PlantUML) vs `DO_*` (Rational Rose):**
+   - En **PlantUML (`DO. Objetos.txt`)** se trazan **todas** las interacciones numeradas (`1.`, `2.`, `3a.`, `6b-cancel.`, `*`), incluyendo múltiples flechas entre el mismo par de clases y flechas `Actor → Frontera` por cada `click*` / `-cancel`.
+   - En **Rational Rose (`Trabajo aplicativo DO.mdl`)** el DO es un VOPC estructural limpio con **una única asociación por par conectado** (sin flechas duplicadas ni flechas `Actor → Frontera` para `click*` / `-cancel`):
+     - **Caso especial `UCR01. Autenticar usuario`**: el actor conecta directamente con **`CI_FormularioLogin`** (sin flecha `Usuario → CC_AutenticarUsuarioController`) y **todas** las asociaciones van sin etiqueta (`$UNNAMED$...`, sin `SegLabel`).
+     - **Casos `UCR02` a `UCR14`**: solo el **primer paso** `Actor → CC_*Controller` lleva etiqueta (`1. validarBtn<Accion>(btn<Accion>)`) tanto en `(object Association "<etiqueta>" ...)` como en `AssociationViewNew` + `SegLabel`. Todas las demás asociaciones (`Controlador ↔ Frontera`, `Controlador ↔ Entidad`) van sin etiqueta (`$UNNAMED$...` sin `SegLabel`).
+3. **Trazabilidad previa al pase**:
    - Verificar siempre que `DO. Objetos.txt` esté sincronizado con el `DA` aprobado (ej. en `UC11` se añadió `boton <Ver Detalle>` en `D. Actividades.txt`; incluirlo al generar `UCR11`).
 
 ### 3.4 Diseño (`Design Model::Entity`)

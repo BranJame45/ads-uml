@@ -175,6 +175,7 @@ package "Inventario y Producción" {
     - costo_unitario : DECIMAL(10,2)
     - subtotal : DECIMAL(10,2)
     --
+    + obtenerDetalleIngreso()
     + registrarDetalleIngreso()
   }
 

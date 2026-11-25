@@ -13,9 +13,12 @@ Flujo transaccional de abastecimiento directo (sin órdenes de compra). Actor: *
 
 ### 1. Interfaz Principal: `<Gestión de Ingresos de Mercancía>`
 - **Bloque Superior:** Botón primario **`[+ Nuevo Ingreso]`** (`btnNuevoIngreso`).
-- **Bloque Central (Historial de Ingresos - `RF-106`):** DataGrid con los ingresos registrados (`N° Ingreso`, `Fecha`, `Proveedor`, `Comprobante Proveedor`, `Costo Total`).
+- **Bloque Central (Historial de Ingresos - `RF-106`):** DataGrid con los ingresos registrados (`N° Ingreso`, `Fecha`, `Proveedor`, `Comprobante Proveedor`, `Costo Total`) y botón por fila **`[Ver Detalle]`** (`btnVerDetalle`).
 
-### 2. Interfaz Secundaria: `<Modal Formulario de Ingreso>`
+### 2. Interfaz Secundaria: `<Modal Detalle de Ingreso>`
+- Muestra los datos del proveedor, comprobante e ítems del ingreso seleccionado (`listadoDetalleIngreso`) y botón **`[Cerrar]`** (`btnCerrar`).
+
+### 3. Interfaz Terciaria: `<Modal Formulario de Ingreso>`
 - **Buscador de Proveedor (`RF-099`):** `txtBuscarProveedor` y botón **`[Buscar Proveedor]`** (`btnBuscarProveedor`, sin `isset` por R4) + `lblProveedorSeleccionado`.
 - **Datos de Cabecera (`RF-098`, `RF-102`):** `txtFecha` (actual por defecto) y `txtNumComprobanteProv` (guía o factura de compra).
 - **Agregar Ítems al Detalle (`RF-100`, `RF-101`):** `cboItem` (insumos y productos activos), `txtCantidad`, `txtCostoUnitario`, botón **`[Agregar Ítem]`** (`btnAgregarItem`).

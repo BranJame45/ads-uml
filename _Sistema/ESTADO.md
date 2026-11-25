@@ -1,23 +1,21 @@
 ---
 tipo: sistema
 proyecto: ADS-2026 II
-estado: en progreso (Pase a Rational Rose - DO)
-fecha: 2026-11-24
+estado: en progreso (Diseño - PlantUML y Design Model)
+fecha: 2026-11-25
 ---
 # Estado del Proyecto
 
-**Dónde quedamos (para continuar en otro ordenador):**
-1. **Entregables PlantUML (`02-Entregables/`):**
-   - `UC01`–`UC14` completos (`Flujo-UCXX.md`, `D. Actividades.txt`, `DO. Objetos.txt`, `DS. Secuencia.txt`) y `D. Entidades.txt`.
-   - En `UC11/D. Actividades.txt` se agregó la rama `boton <Ver Detalle>` (pendiente reflejarla en `UC11/DO. Objetos.txt` y `UC11/DS. Secuencia.txt` si se requiere consistencia documental; sí incluirla al pasar `UCR11` a Rose).
-2. **Rational Rose — Diagramas de Actividades (`Trabajo aplicativo Ajuste.mdl`):**
-   - **`UC01`–`UC14` aprobados** al 100% (archivo congelado como aprobado; no modificar).
-3. **Rational Rose — Diagramas de Objetos de Análisis (`Trabajo aplicativo DO.mdl`):**
-   - **Completados y verificados:**
-     - `Logical View::Analysis Model::Entity::Entities` (`18` entidades `CE_*` con `INT (PK)` / `INT (FK)` / `INT (PK, FK)` y `24` asociaciones con cardinalidades).
-     - `UCR01. Autenticar usuario` (`DO_Autenticar usuario`, directo `Usuario → CI_FormularioLogin`, solo 1er paso etiquetado).
-     - `UCR02`–`UCR07` (`DO_Actualizar clave`, `DO_Recuperar clave`, `DO_Gestionar usuarios`, `DO_Gestionar clientes`, `DO_Registrar venta`, `DO_Atender reclamo y devolución`), iniciando `Actor → Controlador` en el 1er paso y el resto sin etiqueta.
-   - **Pendiente (próximo paso en otro ordenador):**
-     - Generar **`UCR08` a `UCR14`** (`Realizacion Modulo Almacen`: `UC08`–`UC14`) en `Trabajo aplicativo DO.mdl` siguiendo [Reglas-Hibridas-Rose-IA.md](file:///c:/Users/islac/OneDrive/Desktop/ADS-2026%20II/_Sistema/Reglas-Hibridas-Rose-IA.md) (sección 3).
-     - Limpiar el `DO_Gestionar proveedores` antiguo que quedó ubicado dentro de `UCR10` al rehacer `UCR10`.
-     - Luego pasar a Diagramas de Secuencia (`DS`) y `Design Model`.
+**Dónde quedamos (listo para continuar en otro ordenador):**
+1. **Análisis (`DA` + `DO` + `DS`):**
+   - **PlantUML (`02-Entregables/`):** `UC01`–`UC14` completos (`Flujo`, `DA`, `DS`, `DO`) y `D. Entidades.txt`.
+   - **Rational Rose `DA` (`Trabajo aplicativo Ajuste.mdl`):** `UC01`–`UC14` **aprobados** (congelado).
+   - **Rational Rose `DO` (`Trabajo aplicativo DO.mdl`):** `UCR01`–`UCR14` + `Entities` **aprobados**.
+   - **Rational Rose `DS` (`Trabajo aplicativo DS.mdl`):** **`UC04` y `UC10` aprobados** (con orden MVC estricto, `SelfMessView`, barra única en entidades, `cancelarOperacion` vía controlador y parámetros tipados).
+2. **Diseño (`Design Model` — Fase actual):**
+   - **Manual oficial creado:** `_Sistema/Reglas-Diseno-PlantUML-Rose.md` (basado en `TrabajoOficialZegarra.mdl` + reglas CARTOLIMP: `shared` con `pantalla` / `ViewMensajeSistema` / `mensajeConfirmacion`, `index*` / `get*` / `control*` / `form*`, `POST`, `Modelos` heredando de `conexion` con `conectarBD()` / `desconectarBD()`, parámetros literales concretos y trazabilidad 1:1 con `DA` y `DS` Análisis).
+   - **Primer entregable de Diseño completado (PlantUML):**
+     - `UC10. Gestionar productos de limpieza/DS. Diseno.txt`
+     - `UC10. Gestionar productos de limpieza/DO. Diseno.txt`
+3. **Próximo paso (en otro ordenador):**
+   - Revisar `UC10/DS. Diseno.txt` y `UC10/DO. Diseno.txt` en PlantUML, y continuar generando los diagramas de Diseño (`DS. Diseno.txt` y `DO. Diseno.txt`) para los demás Casos de Uso (ej. `UC04`) y su traslado a `Design Model` en Rose.

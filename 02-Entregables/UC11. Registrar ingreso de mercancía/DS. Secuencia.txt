@@ -13,6 +13,7 @@ title DS_Registrar Ingreso de Mercancía (UC11)
 
 actor "Encargado de Almacén" as encargado
 boundary "CI_VentanaGestionarIngreso" as b_ventana
+boundary "CI_ModalDetalleIngreso" as b_detalle
 boundary "CI_FormularioIngreso" as b_form
 boundary "CI_MensajeSistema" as b_msg
 control "CC_RegistrarIngresoController" as ctrl
@@ -47,6 +48,36 @@ deactivate e_ingreso
 ctrl -> b_ventana : CI_VentanaGestionarIngresoShow(historialIngresos: List)
 activate b_ventana
 b_ventana --> encargado : Muestra VentanaGestionarIngreso con historial
+
+' =================== RAMA VER DETALLE ===================
+group VER DETALLE DE INGRESO
+  encargado -> b_ventana : clickVerDetalle(btnVerDetalle: String, id_ingreso: int)
+  b_ventana -> ctrl : validarBtnVerDetalle(btnVerDetalle: String): bool
+
+  ctrl -> ctrl : validarBoton(btnVerDetalle: String): bool
+
+  break si validarBoton() == false
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> encargado : [Error] Acceso no permitido
+  end
+
+  ctrl -> e_detalle : obtenerDetalleIngreso(id_ingreso: int): List
+  activate e_detalle
+  e_detalle --> ctrl : detalleIngreso
+  deactivate e_detalle
+
+  break si detalleIngreso está vacía
+    ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
+    b_msg --> encargado : [Error] El ingreso seleccionado no existe
+  end
+
+  ctrl -> b_detalle : CI_ModalDetalleIngresoShow(detalleIngreso: List)
+  activate b_detalle
+  b_detalle --> encargado : Muestra ModalDetalleIngreso con proveedor, comprobante e ítems
+  encargado -> b_detalle : clickCerrar(btnCerrar: String)
+  b_detalle --> encargado : Cierra modal de detalle
+  deactivate b_detalle
+end
 
 ' =================== RAMA NUEVO INGRESO ===================
 group NUEVO INGRESO DE MERCANCÍA

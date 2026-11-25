@@ -5,6 +5,17 @@ fecha: 2026-10-03
 ---
 # Bitácora de Cambios
 
+- **2026-11-25 (Sesión 9)**:
+  - Aprobados `UC04` y `UC10` en `Trabajo aplicativo DS.mdl` (orden MVC estricto, `SelfMessView`, barra única en entidades, `cancelarOperacion` enrutado por el controlador, parámetros tipados en `Analysis Model` y `DS`).
+  - Investigado `Design Model` de `TrabajoOficialZegarra.mdl` (sin editar el archivo): extraída arquitectura `shared` (`pantalla`, `ViewMensajeSistema`, `mensajeConfirmacion`), `index*`, `get*`, `control*`, `form*` separados, `POST` y `Modelos` heredando de `conexion` (`conectarBD`/`desconectarBD`).
+  - Creado manual oficial `_Sistema/Reglas-Diseno-PlantUML-Rose.md`.
+  - Creados `UC10/DS. Diseno.txt` y `UC10/DO. Diseno.txt` en PlantUML con trazabilidad 1:1 contra `UC10/D. Actividades.txt` y `UC10/DS. Secuencia.txt`.
+
+- **2026-11-24 (Sesión 8)**:
+  - Verificado `Trabajo aplicativo DO.mdl` (en Descargas) contra los 14 `DO. Objetos.txt`: confirmados `UCR01`–`UCR14` completos (incluyendo `UCR08`–`UCR14`, `CI_ModalDetalleIngreso` en `UCR11` y limpieza del `DO_Gestionar proveedores` antiguo en `UCR10`).
+  - Sincronizada la rama `boton <Ver Detalle>` en `UC11` (`Flujo-UC11.md`, `DS. Secuencia.txt`, `DO. Objetos.txt` y `D. Entidades.txt`).
+  - Actualizado `_Sistema/ESTADO.md` registrando la aprobación de los `DO` (`UCR01`–`UCR14`).
+
 - **2026-11-24 (Sesión 7)**:
   - Limpieza de rezagos en `Reglas-Diagramas-Secuencia.md` (S8, S9, S11, Checklist) y `Reglas-Diagramas-Objetos.md` (Checklist) para alinear al 100% arranque directo `Actor → Controlador` (sin `CI_PanelPrincipal`) y prioridad de camino negativo (`Cancelar` 1º).
   - Ajustes de trazabilidad en `UC10` (`btnGuardarNuevo` / `btnGuardarCambios` en DS y DO) y `UC06` (`CI_VistaComprobante`, `btnModificarCantidad`, validación DNI/RUC en `validarComprobanteCliente`, `INNER JOIN Categoria`).

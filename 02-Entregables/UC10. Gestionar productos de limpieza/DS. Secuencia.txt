@@ -32,13 +32,6 @@ break si validarBoton() == false
   b_msg --> encargado : [Error] Acceso no permitido
 end
 
-ctrl -> ctrl : validarRolEncargadoAlmacen(rolUsuario: String): bool
-
-break si validarRolEncargadoAlmacen() == false
-  ctrl -> b_msg : CI_MensajeSistemaShow(msg: String, descripcion: String, link: String)
-  b_msg --> encargado : [Error] Privilegios insuficientes
-end
-
 ctrl -> e_producto : obtenerProductosActivos(): List
 activate e_producto
 e_producto --> ctrl : listadoProductos
